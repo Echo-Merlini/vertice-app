@@ -1,0 +1,23 @@
+# deps
+node_modules/
+**/node_modules/
+
+# builds
+dist/
+**/dist/
+.next/
+build/
+
+# env / secrets
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.*
+!**/.env.example
+
+# os / editor
+.DS_Store
+**/.DS_Store
+.smbdelete*
+*.log
