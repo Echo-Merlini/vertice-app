@@ -67,6 +67,7 @@ app.get("/health", (c) => c.json({ status: "ok", ts: Date.now() }));
 // ─── PWA static files ───────────────────────────────────
 app.get("/sw.js",        (c) => new Response(Bun.file("./public/sw.js"),        { headers: { "Content-Type": "application/javascript", "Service-Worker-Allowed": "/" } }));
 app.get("/manifest.json",(c) => new Response(Bun.file("./public/manifest.json"),{ headers: { "Content-Type": "application/manifest+json" } }));
+app.get("/favicon.svg",  (c) => new Response(Bun.file("./public/favicon.svg"),  { headers: { "Content-Type": "image/svg+xml" } }));
 
 // ─── Uploaded content images (local disk, persisted via a mounted volume) ──
 app.get("/uploads/:file", async (c) => {

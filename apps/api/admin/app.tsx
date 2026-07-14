@@ -130,6 +130,20 @@ function Icon({ name, size = 14 }: { name: string; size?: number }) {
 }
 
 // ─── Shared helpers ───────────────────────────────────────
+// Vértice mark — pyramid seen from above (matches the marketing favicon).
+function Mark({ size = 26 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 100 100" style={{ flexShrink: 0 }} aria-hidden="true">
+      <polygon points="6,6 94,6 50,50" fill="#3A3E48" />
+      <polygon points="6,6 6,94 50,50" fill="#2C2F37" />
+      <polygon points="94,6 94,94 50,50" fill="#22242B" />
+      <polygon points="6,94 94,94 50,50" fill="#191B21" />
+      <line x1="6" y1="6" x2="50" y2="50" stroke="#E0A24C" strokeWidth="2.4" strokeLinecap="round" />
+      <circle cx="50" cy="50" r="3.6" fill="#E0A24C" />
+    </svg>
+  );
+}
+
 function Btn({ label, variant = "primary", onClick, disabled }: { label: string; variant?: "primary" | "danger" | "ghost"; onClick?: () => void; disabled?: boolean }) {
   const bg = variant === "primary" ? C.accentDark : variant === "danger" ? "#7f1d1d" : C.surface;
   const col = variant === "danger" ? C.danger : C.text;
@@ -172,8 +186,11 @@ function Login({ onSuccess }: { onSuccess: () => void }) {
     <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: C.bg, padding: 24 }}>
       <div style={{ width: "100%", maxWidth: 400 }}>
         <div style={{ textAlign: "center", marginBottom: 36 }}>
-          <div style={{ fontSize: 28, fontWeight: 700, color: C.text, letterSpacing: -0.5 }}>GoBoiler</div>
-          <div style={{ fontSize: 13, color: C.muted, marginTop: 6 }}>Admin Panel</div>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 12 }}>
+            <Mark size={34} />
+            <div style={{ fontSize: 28, fontWeight: 700, color: C.text, letterSpacing: -0.5 }}>Vértice</div>
+          </div>
+          <div style={{ fontSize: 13, color: C.muted, marginTop: 8 }}>Admin Panel</div>
         </div>
         <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12, padding: "32px 36px" }}>
           <form onSubmit={submit}>
@@ -2757,8 +2774,13 @@ function App() {
 
       <nav style={T.sidebar}>
         <div style={T.logoWrap}>
-          <div style={T.logoText}>GoBoiler</div>
-          <div style={T.logoBadge}>Admin Panel</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <Mark size={28} />
+            <div>
+              <div style={T.logoText}>Vértice</div>
+              <div style={T.logoBadge}>Admin Panel</div>
+            </div>
+          </div>
         </div>
 
         <div style={{ flex: 1, overflowY: "auto" as const, minHeight: 0, paddingTop: 8, paddingBottom: 4 }}>

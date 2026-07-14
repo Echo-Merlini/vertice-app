@@ -10,7 +10,7 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "bun run src/db/migrate.ts",
     "db:studio": "drizzle-kit studio",
-    "admin:build": "bun build admin/app.tsx --outfile public/admin/app.js --minify",
+    "admin:build": "bun build admin/app.tsx --outfile public/admin/app.js --minify && cp admin/index.html public/admin/index.html",
     "admin:dev": "bun build admin/app.tsx --outfile public/admin/app.js --watch"
   },
   "dependencies": {
