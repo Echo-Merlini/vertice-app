@@ -47,6 +47,11 @@ export const DEFAULT_TEXT: Record<string, string> = {
   "hero.taglineAccent": "Recompute.",
   "hero.eyebrow": "Technical AV · Turnkey Events · Products · On-chain AI",
   "hero.cta": "Start a project",
+  "assistant.heading": "Ask Vértice",
+  "assistant.sub": "Our AI assistant — ask about our services, events, products, or the on-chain AI stack. It answers from what we actually build.",
+  "assistant.intro": "Hi — I'm the Vértice assistant. Ask me anything about what we do and how we work.",
+  "assistant.placeholder": "Ask about Vértice…",
+  "assistant.reply": "I'm still being trained on the full Vértice knowledge base — that goes live soon. Meanwhile, drop your question in the contact form below and we'll get right back to you.",
   "services.heading1": "Four disciplines,",
   "services.heading2": "one vértice.",
   "services.sub": "Commercial products and technical services, delivered on infrastructure we own.",
@@ -78,11 +83,12 @@ export async function seedContent() {
     console.log(`✓ Seeded ${DEFAULT_CARDS.length} content cards`);
   }
 
-  const [{ total: textCount }] = await db.select({ total: count() }).from(siteText);
-  if (textCount === 0) {
-    await db.insert(siteText).values(
-      Object.entries(DEFAULT_TEXT).map(([key, value]) => ({ key, value }))
-    );
-    console.log(`✓ Seeded ${Object.keys(DEFAULT_TEXT).length} site-text entries`);
+  // Insert any missing default text keys without overwriting edited values —
+  // so new keys shipped in a later release appear automatically on boot.
+  let added = 0;
+  for (const [key, value] of Object.entries(DEFAULT_TEXT)) {
+    const res = await db.insert(siteText).values({ key, value }).onConflictDoNothing({ target: siteText.key });
+    if ((res as any).rowCount ?? 0) added++;
   }
+  if (added) console.log(`✓ Seeded ${added} new site-text entrie(s)`);
 }

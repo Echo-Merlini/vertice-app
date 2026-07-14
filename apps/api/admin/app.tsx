@@ -2383,6 +2383,7 @@ function CardsManager({ toast }: { toast: (m: string, t?: "ok" | "err") => void 
 
 const TEXT_GROUPS: { prefix: string; label: string }[] = [
   { prefix: "hero.", label: "Hero / header" },
+  { prefix: "assistant.", label: "AI assistant" },
   { prefix: "services.", label: "Services heading" },
   { prefix: "contact.", label: "Contact heading" },
 ];

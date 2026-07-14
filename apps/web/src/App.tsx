@@ -2,6 +2,7 @@ import { Routes, Route } from "react-router-dom";
 import { HeroSection } from "./sections/HeroSection";
 import { WorkMarqueeSection } from "./sections/WorkMarqueeSection";
 import { MarqueeSection } from "./sections/MarqueeSection";
+import { AssistantSection } from "./sections/AssistantSection";
 import { ServicesSection } from "./sections/ServicesSection";
 import { FlagshipSection } from "./sections/FlagshipSection";
 import { ProjectsSection } from "./sections/ProjectsSection";
@@ -14,6 +15,7 @@ function Home() {
       <HeroSection />
       <WorkMarqueeSection />
       <MarqueeSection />
+      <AssistantSection />
       <ServicesSection />
       <FlagshipSection />
       <ProjectsSection />

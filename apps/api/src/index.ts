@@ -54,6 +54,8 @@ app.use("/auth/request-password-reset", rateLimiter({ windowMs: 60 * 60 * 1000, 
 app.use("/auth/sign-in/magic-link",     rateLimiter({ windowMs: 60 * 60 * 1000, limit: 5, keyGenerator: c => c.req.header("x-forwarded-for") ?? "local" }));
 // Public contact form — 15 submissions / hour per IP (spam guard)
 app.use("/leads", rateLimiter({ windowMs: 60 * 60 * 1000, limit: 15, keyGenerator: c => c.req.header("x-forwarded-for") ?? "local" }));
+// Public AI assistant — 40 messages / hour per IP (abuse + future LLM-cost guard)
+app.use("/assistant", rateLimiter({ windowMs: 60 * 60 * 1000, limit: 40, keyGenerator: c => c.req.header("x-forwarded-for") ?? "local" }));
 // Relaxed: general API — 300 req/min per IP
 app.use("*", rateLimiter({ windowMs: 60 * 1000, limit: 300, keyGenerator: c => c.req.header("x-forwarded-for") ?? "local" }));
 
