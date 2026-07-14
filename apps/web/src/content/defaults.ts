@@ -75,5 +75,13 @@ export const DEFAULT_CONTENT: SiteContent = {
     "contact.heading1": "Let's build something",
     "contact.heading2": "that verifies itself.",
     "contact.sub": "A stage to run, a product to ship, an agent to prove — start here.",
+    "contact.form.name": "Your name",
+    "contact.form.email": "Email",
+    "contact.form.message": "What are you building?",
+    "contact.form.submit": "Start a project",
+    "contact.form.sending": "Sending…",
+    "contact.form.thanks": "Thanks",
+    "contact.form.thanksSub": "We'll be in touch shortly.",
+    "contact.form.error": "Couldn't send — try again, or email us directly below.",
   },
 };

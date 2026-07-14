@@ -37,3 +37,15 @@ UPDATE content_card SET i18n = '{"pt":{"name":"AV Técnico","body":"Engenharia e
 UPDATE content_card SET i18n = '{"pt":{"name":"Eventos Chave-na-Mão","body":"Do espaço à última vénia. Espaços de topo garantidos por mais de 20 anos de relações, montados com uma rede de equipamento parceiro — de ponta a ponta.","tags":["Espaços","Produção","Palco","Iluminação"]}}' WHERE slug = 'events';
 UPDATE content_card SET i18n = '{"pt":{"name":"Produtos","body":"Software produtizado com receita recorrente — clock-in.pt, PWA Push, MCPs comerciais, automação n8n — além de desenvolvimentos à medida para clientes.","tags":["SaaS","MCPs","Automação","À medida"]}}' WHERE slug = 'products';
 UPDATE content_card SET i18n = '{"pt":{"name":"IA On-chain","body":"IA on-chain verificável e recalculável — o Recompute Kit, agentes autónomos atestados, MCPs especializados e micro-pagamentos A2A.","tags":["Recompute Kit","Agentes","CCIP","A2A"]}}' WHERE slug = 'crypto';
+
+-- Contact form UI strings (EN + PT)
+INSERT INTO site_text (key, value, value_pt) VALUES
+ ('contact.form.name',      'Your name',                'O teu nome'),
+ ('contact.form.email',     'Email',                    'Email'),
+ ('contact.form.message',   'What are you building?',   'O que estás a construir?'),
+ ('contact.form.submit',    'Start a project',          'Iniciar projeto'),
+ ('contact.form.sending',   'Sending…',                 'A enviar…'),
+ ('contact.form.thanks',    'Thanks',                   'Obrigado'),
+ ('contact.form.thanksSub', 'We''ll be in touch shortly.', 'Entramos em contacto em breve.'),
+ ('contact.form.error',     'Couldn''t send — try again, or email us directly below.', 'Não foi possível enviar — tenta novamente, ou envia-nos email diretamente abaixo.')
+ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, value_pt = EXCLUDED.value_pt;

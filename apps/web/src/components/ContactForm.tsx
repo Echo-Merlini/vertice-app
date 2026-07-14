@@ -1,11 +1,21 @@
 import { FormEvent, useState } from "react";
 import { ArrowUpRight, Check } from "lucide-react";
-
-const API = import.meta.env.VITE_API_URL || "http://localhost:3000";
+import { API, useText } from "../content/ContentContext";
 
 type Status = "idle" | "sending" | "sent" | "error";
 
 export function ContactForm() {
+  const t = {
+    name: useText("contact.form.name"),
+    email: useText("contact.form.email"),
+    message: useText("contact.form.message"),
+    submit: useText("contact.form.submit"),
+    sending: useText("contact.form.sending"),
+    thanks: useText("contact.form.thanks"),
+    thanksSub: useText("contact.form.thanksSub"),
+    error: useText("contact.form.error"),
+  };
+
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [message, setMessage] = useState("");
@@ -29,13 +39,14 @@ export function ContactForm() {
   }
 
   if (status === "sent") {
+    const first = name.split(" ")[0];
     return (
       <div className="mx-auto max-w-md rounded-2xl border border-brassLight/30 bg-emerald-400/5 p-8 text-center">
         <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-emerald-400/15 text-emerald-300">
           <Check className="h-5 w-5" />
         </div>
-        <p className="font-display font-medium text-paper">Thanks, {name.split(" ")[0] || "there"}.</p>
-        <p className="mt-1 text-sm text-slate">We&apos;ll be in touch shortly.</p>
+        <p className="font-display font-medium text-paper">{t.thanks}{first ? `, ${first}` : ""}.</p>
+        <p className="mt-1 text-sm text-slate">{t.thanksSub}</p>
       </div>
     );
   }
@@ -48,25 +59,25 @@ export function ContactForm() {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <input
           required value={name} onChange={(e) => setName(e.target.value)}
-          placeholder="Your name" className={input}
+          placeholder={t.name} className={input}
         />
         <input
           required type="email" value={email} onChange={(e) => setEmail(e.target.value)}
-          placeholder="Email" className={input}
+          placeholder={t.email} className={input}
         />
       </div>
       <textarea
         value={message} onChange={(e) => setMessage(e.target.value)}
-        placeholder="What are you building?" rows={4} className={`${input} resize-none`}
+        placeholder={t.message} rows={4} className={`${input} resize-none`}
       />
       {status === "error" && (
-        <p className="text-sm text-red-400">Couldn&apos;t send — try again, or email us directly below.</p>
+        <p className="text-sm text-red-400">{t.error}</p>
       )}
       <button
         type="submit" disabled={status === "sending"}
         className="group inline-flex w-full items-center justify-center gap-3 rounded-full bg-brass py-3 text-sm font-medium tracking-tight text-paper transition-colors duration-200 hover:bg-brassLight hover:text-deepink disabled:opacity-50"
       >
-        {status === "sending" ? "Sending…" : "Start a project"}
+        {status === "sending" ? t.sending : t.submit}
         <span className="flex h-6 w-6 items-center justify-center rounded-full bg-paper/15 transition-transform duration-200 group-hover:rotate-45">
           <ArrowUpRight className="h-3.5 w-3.5" />
         </span>
