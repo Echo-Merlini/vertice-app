@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { DEFAULT_CONTENT, SiteContent, Card } from "./defaults";
+import { useLang } from "./LanguageContext";
 
 export const API = import.meta.env.VITE_API_URL || "http://localhost:3000";
 
@@ -13,12 +14,15 @@ export function imageUrl(path?: string): string | undefined {
 const ContentContext = createContext<SiteContent>(DEFAULT_CONTENT);
 
 export function ContentProvider({ children }: { children: ReactNode }) {
+  const { lang } = useLang();
   // Start from defaults (instant first paint), then hydrate from the API.
   const [content, setContent] = useState<SiteContent>(DEFAULT_CONTENT);
 
   useEffect(() => {
     let alive = true;
-    fetch(`${API}/content`)
+    // lang is passed through so PT content flows automatically once it exists;
+    // the API returns EN today, so switching is wired but content stays EN.
+    fetch(`${API}/content?lang=${lang}`)
       .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
       .then((data: Partial<SiteContent>) => {
         if (!alive) return;
@@ -33,7 +37,7 @@ export function ContentProvider({ children }: { children: ReactNode }) {
       })
       .catch(() => { /* keep defaults on any failure */ });
     return () => { alive = false; };
-  }, []);
+  }, [lang]);
 
   return <ContentContext.Provider value={content}>{children}</ContentContext.Provider>;
 }

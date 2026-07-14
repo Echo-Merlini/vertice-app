@@ -1,6 +1,7 @@
 import { FadeIn } from "../components/FadeIn";
 import { VerticeMark } from "../components/VerticeMark";
 import { BrassButton } from "../components/BrassButton";
+import { LanguageToggle } from "../components/LanguageToggle";
 import { useText } from "../content/ContentContext";
 
 const NAV = [
@@ -34,16 +35,19 @@ export function HeroSection() {
             Vértice<span className="text-slate"> Criativo</span>
           </span>
         </a>
-        <div className="hidden md:flex items-center gap-8">
-          {NAV.map(([label, href]) => (
-            <a
-              key={label}
-              href={href}
-              className="text-[13px] font-medium tracking-tight text-slate hover:text-paper transition-colors duration-200"
-            >
-              {label}
-            </a>
-          ))}
+        <div className="flex items-center gap-6 md:gap-8">
+          <div className="hidden md:flex items-center gap-8">
+            {NAV.map(([label, href]) => (
+              <a
+                key={label}
+                href={href}
+                className="text-[13px] font-medium tracking-tight text-slate hover:text-paper transition-colors duration-200"
+              >
+                {label}
+              </a>
+            ))}
+          </div>
+          <LanguageToggle />
         </div>
       </FadeIn>
 
