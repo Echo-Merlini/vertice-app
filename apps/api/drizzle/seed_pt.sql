@@ -49,3 +49,19 @@ INSERT INTO site_text (key, value, value_pt) VALUES
  ('contact.form.thanksSub', 'We''ll be in touch shortly.', 'Entramos em contacto em breve.'),
  ('contact.form.error',     'Couldn''t send — try again, or email us directly below.', 'Não foi possível enviar — tenta novamente, ou envia-nos email diretamente abaixo.')
 ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, value_pt = EXCLUDED.value_pt;
+
+-- News page UI strings (EN + PT) + RSS config keys
+INSERT INTO site_text (key, value, value_pt) VALUES
+ ('news.heading',             'News',                                    'Notícias'),
+ ('news.sub',                 'Newsletters, updates, and what we''re building.', 'Newsletters, novidades e o que andamos a construir.'),
+ ('news.subscribeLabel',      'Subscribe to the newsletter',             'Subscrever a newsletter'),
+ ('news.subscribePlaceholder','your@email.com',                          'o.teu@email.com'),
+ ('news.subscribeCta',        'Subscribe',                               'Subscrever'),
+ ('news.subscribeThanks',     'You''re subscribed. Welcome.',            'Estás subscrito. Bem-vindo.'),
+ ('news.latestHeading',       'Latest',                                  'Mais recente'),
+ ('news.archiveHeading',      'Previous issues',                         'Edições anteriores'),
+ ('news.rssHeading',          'From the feed',                           'Do feed'),
+ ('news.empty',               'No issues yet — subscribe to get the first one.', 'Ainda não há edições — subscreve para receberes a primeira.')
+ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, value_pt = EXCLUDED.value_pt;
+INSERT INTO site_text (key, value) VALUES ('news.rssUrl', ''), ('news.rssTitle', '')
+ON CONFLICT (key) DO NOTHING;

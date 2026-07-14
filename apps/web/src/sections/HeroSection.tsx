@@ -1,3 +1,5 @@
+import { Fragment } from "react";
+import { Link } from "react-router-dom";
 import { FadeIn } from "../components/FadeIn";
 import { VerticeMark } from "../components/VerticeMark";
 import { BrassButton } from "../components/BrassButton";
@@ -19,6 +21,7 @@ export function HeroSection() {
   const taglineAccent = useText("hero.taglineAccent");
   const eyebrow = useText("hero.eyebrow");
   const cta = useText("hero.cta");
+  const newsLabel = useText("news.heading");
   return (
     <section className="relative min-h-screen flex flex-col overflow-hidden">
       {/* brass glow */}
@@ -38,13 +41,22 @@ export function HeroSection() {
         <div className="flex items-center gap-6 md:gap-8">
           <div className="hidden md:flex items-center gap-8">
             {NAV.map(([label, href]) => (
-              <a
-                key={label}
-                href={href}
-                className="text-[13px] font-medium tracking-tight text-slate hover:text-paper transition-colors duration-200"
-              >
-                {label}
-              </a>
+              <Fragment key={label}>
+                <a
+                  href={href}
+                  className="text-[13px] font-medium tracking-tight text-slate hover:text-paper transition-colors duration-200"
+                >
+                  {label}
+                </a>
+                {label === "Services" && (
+                  <Link
+                    to="/news"
+                    className="text-[13px] font-medium tracking-tight text-slate hover:text-paper transition-colors duration-200"
+                  >
+                    {newsLabel}
+                  </Link>
+                )}
+              </Fragment>
             ))}
           </div>
           <LanguageToggle />

@@ -69,6 +69,18 @@ export const DEFAULT_TEXT: Record<string, string> = {
   "contact.form.thanks": "Thanks",
   "contact.form.thanksSub": "We'll be in touch shortly.",
   "contact.form.error": "Couldn't send — try again, or email us directly below.",
+  "news.heading": "News",
+  "news.sub": "Newsletters, updates, and what we're building.",
+  "news.subscribeLabel": "Subscribe to the newsletter",
+  "news.subscribePlaceholder": "your@email.com",
+  "news.subscribeCta": "Subscribe",
+  "news.subscribeThanks": "You're subscribed. Welcome.",
+  "news.latestHeading": "Latest",
+  "news.archiveHeading": "Previous issues",
+  "news.rssHeading": "From the feed",
+  "news.empty": "No issues yet — subscribe to get the first one.",
+  "news.rssUrl": "",
+  "news.rssTitle": "",
 };
 
 /** Idempotent: only seeds when the tables are empty. */

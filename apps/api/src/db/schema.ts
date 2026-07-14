@@ -345,6 +345,28 @@ export const siteText = pgTable("site_text", {
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
+// ─── Newsletter: subscribers + issues ────────────────────
+export const subscriber = pgTable("subscriber", {
+  id: text("id").primaryKey(),
+  email: text("email").notNull().unique(),
+  lang: text("lang").notNull().default("en"),        // preferred language
+  status: text("status").notNull().default("active"), // active | unsubscribed
+  source: text("source").notNull().default("news"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (t) => ({ byCreated: index("subscriber_created_idx").on(t.createdAt) }));
+
+export const newsletter = pgTable("newsletter", {
+  id: text("id").primaryKey(),
+  subject: text("subject").notNull(),
+  body: text("body").notNull().default(""),           // HTML
+  excerpt: text("excerpt"),
+  lang: text("lang").notNull().default("en"),          // single language per issue
+  status: text("status").notNull().default("draft"),   // draft | sent
+  sentAt: timestamp("sent_at"),
+  recipientCount: integer("recipient_count").notNull().default(0),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (t) => ({ byCreated: index("newsletter_created_idx").on(t.createdAt) }));
+
 // ─── Audit Log ───────────────────────────────────────────
 export const auditLog = pgTable("audit_log", {
   id: text("id").primaryKey(),

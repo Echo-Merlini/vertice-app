@@ -2440,7 +2440,8 @@ const TEXT_GROUPS: { prefix: string; label: string }[] = [
   { prefix: "hero.", label: "Hero / header" },
   { prefix: "assistant.", label: "AI assistant" },
   { prefix: "services.", label: "Services heading" },
-  { prefix: "contact.", label: "Contact heading" },
+  { prefix: "contact.", label: "Contact / form" },
+  { prefix: "news.", label: "News page + RSS URL" },
 ];
 
 function SiteTextManager({ toast, lang }: { toast: (m: string, t?: "ok" | "err") => void; lang: EditLang }) {
@@ -2512,7 +2513,149 @@ function Content({ toast }: { toast: (m: string, t?: "ok" | "err") => void }) {
   );
 }
 
-type Page = "dashboard" | "content" | "users" | "leads" | "sessions" | "wallets" | "svc:auth" | "svc:email" | "svc:stripe" | "svc:crypto" | "svc:database" | "svc:storage" | "svc:agent" | "mcp" | "skills" | "cron" | "push" | "logs" | "jobs" | "apikeys" | "webhooks" | "flags" | "audit" | "notifs" | "faq";
+// ─── Newsletter: issues + subscribers ────────────────────
+type Issue = { id: string; subject: string; body: string; excerpt: string | null; lang: string; status: string; sentAt: string | null; recipientCount: number; createdAt: string };
+type Sub = { id: string; email: string; lang: string; status: string; source: string; createdAt: string };
+type IssueDraft = { id: string | null; subject: string; lang: string; excerpt: string; body: string };
+
+function Subscribers({ toast }: { toast: (m: string, t?: "ok" | "err") => void }) {
+  const [subs, setSubs] = useState<Sub[]>([]);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => { api<Sub[]>("/newsletter/subscribers").then(s => { setSubs(s); setLoading(false); }).catch(() => setLoading(false)); }, []);
+  const del = async (id: string) => {
+    if (!confirm("Remove this subscriber?")) return;
+    try { await api(`/newsletter/subscribers/${id}`, { method: "DELETE" }); setSubs(p => p.filter(s => s.id !== id)); toast("Removed"); }
+    catch (e: any) { toast(e.message, "err"); }
+  };
+  const copyAll = () => { navigator.clipboard.writeText(subs.filter(s => s.status === "active").map(s => s.email).join(", ")); toast("Active emails copied"); };
+  return (
+    <div style={T.card}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6, padding: "0 4px" }}>
+        <span style={{ fontSize: 13, color: C.muted }}>{subs.length} subscriber(s)</span>
+        {subs.length > 0 && <Btn label="Copy active emails" variant="ghost" onClick={copyAll} />}
+      </div>
+      {loading ? <div style={T.empty}>Loading…</div> : !subs.length ? <div style={T.empty}>No subscribers yet</div> : (
+        <table style={T.table}>
+          <thead><tr>{["Email", "Lang", "Status", "Joined", ""].map(h => <th key={h} style={T.th}>{h}</th>)}</tr></thead>
+          <tbody>
+            {subs.map(s => (
+              <tr key={s.id}>
+                <td style={T.td}>{s.email}</td>
+                <td style={{ ...T.td, textTransform: "uppercase", color: C.faint }}>{s.lang}</td>
+                <td style={T.td}><span style={{ ...T.chip, color: s.status === "active" ? C.success : C.muted }}>{s.status}</span></td>
+                <td style={{ ...T.td, color: C.muted, whiteSpace: "nowrap" }}>{new Date(s.createdAt).toLocaleDateString()}</td>
+                <td style={T.td}><Btn label="Remove" variant="danger" onClick={() => del(s.id)} /></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </div>
+  );
+}
+
+function Issues({ toast }: { toast: (m: string, t?: "ok" | "err") => void }) {
+  const [list, setList] = useState<Issue[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [draft, setDraft] = useState<IssueDraft | null>(null);
+  const [busy, setBusy] = useState(false);
+  const load = () => api<Issue[]>("/newsletter").then(l => { setList(l); setLoading(false); }).catch(() => setLoading(false));
+  useEffect(() => { load(); }, []);
+
+  const save = async () => {
+    if (!draft) return;
+    const payload = { subject: draft.subject, lang: draft.lang, excerpt: draft.excerpt, body: draft.body };
+    try {
+      if (draft.id) await api(`/newsletter/${draft.id}`, { method: "PATCH", body: JSON.stringify(payload) });
+      else await api("/newsletter", { method: "POST", body: JSON.stringify(payload) });
+      toast("Saved"); setDraft(null); load();
+    } catch (e: any) { toast(e.message, "err"); }
+  };
+  const del = async (id: string) => {
+    if (!confirm("Delete this issue?")) return;
+    try { await api(`/newsletter/${id}`, { method: "DELETE" }); setList(p => p.filter(i => i.id !== id)); toast("Deleted"); }
+    catch (e: any) { toast(e.message, "err"); }
+  };
+  const send = async (i: Issue) => {
+    if (!confirm(`Send "${i.subject}" to all active subscribers and publish it on the News page?`)) return;
+    setBusy(true);
+    try {
+      const r = await api<{ subscribers: number; delivered: number; failed: number }>(`/newsletter/${i.id}/send`, { method: "POST" });
+      toast(`Published · ${r.delivered}/${r.subscribers} delivered${r.failed ? `, ${r.failed} failed` : ""}`, r.failed ? "err" : "ok");
+      load();
+    } catch (e: any) { toast(e.message, "err"); } finally { setBusy(false); }
+  };
+
+  if (draft) {
+    const set = (k: keyof IssueDraft, v: any) => setDraft({ ...draft, [k]: v });
+    return (
+      <div style={{ ...T.card, border: `1px solid ${C.accentDark}` }}>
+        <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 16 }}>{draft.id ? "Edit issue" : "New issue"}</div>
+        <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 14 }}>
+          <div><label style={T.label}>Subject</label><input style={T.input} value={draft.subject} onChange={e => set("subject", e.target.value)} /></div>
+          <div><label style={T.label}>Language</label>
+            <select style={T.input} value={draft.lang} onChange={e => set("lang", e.target.value)}><option value="en">English</option><option value="pt">Português</option></select>
+          </div>
+        </div>
+        <div style={{ marginTop: 14 }}><label style={T.label}>Excerpt (shown on the News page card)</label>
+          <input style={T.input} value={draft.excerpt} onChange={e => set("excerpt", e.target.value)} />
+        </div>
+        <div style={{ marginTop: 14 }}><label style={T.label}>Body — HTML</label>
+          <textarea style={{ ...T.input, minHeight: 220, fontFamily: "ui-monospace, monospace", resize: "vertical" as const }} value={draft.body} onChange={e => set("body", e.target.value)} placeholder="<h2>Hello…</h2><p>…</p>" />
+        </div>
+        <div style={{ display: "flex", gap: 8, marginTop: 18 }}>
+          <Btn label={draft.id ? "Save changes" : "Create draft"} onClick={save} />
+          <Btn label="Cancel" variant="ghost" onClick={() => setDraft(null)} />
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <div style={{ marginBottom: 12 }}><Btn label="+ New issue" onClick={() => setDraft({ id: null, subject: "", lang: "en", excerpt: "", body: "" })} /></div>
+      <div style={T.card}>
+        {loading ? <div style={T.empty}>Loading…</div> : !list.length ? <div style={T.empty}>No issues yet</div> : (
+          <table style={T.table}>
+            <thead><tr>{["Subject", "Lang", "Status", "Sent", "To", ""].map(h => <th key={h} style={T.th}>{h}</th>)}</tr></thead>
+            <tbody>
+              {list.map(i => (
+                <tr key={i.id}>
+                  <td style={{ ...T.td, fontWeight: 600 }}>{i.subject}</td>
+                  <td style={{ ...T.td, textTransform: "uppercase", color: C.faint }}>{i.lang}</td>
+                  <td style={T.td}><span style={{ ...T.chip, color: i.status === "sent" ? C.success : C.warning }}>{i.status}</span></td>
+                  <td style={{ ...T.td, color: C.muted, whiteSpace: "nowrap" }}>{i.sentAt ? new Date(i.sentAt).toLocaleDateString() : "—"}</td>
+                  <td style={{ ...T.td, color: C.muted }}>{i.status === "sent" ? i.recipientCount : "—"}</td>
+                  <td style={{ ...T.td, whiteSpace: "nowrap" }}>
+                    <Btn label="Edit" variant="ghost" onClick={() => setDraft({ id: i.id, subject: i.subject, lang: i.lang, excerpt: i.excerpt ?? "", body: i.body })} />{" "}
+                    {i.status !== "sent" && <><Btn label={busy ? "…" : "Send"} onClick={() => send(i)} disabled={busy} />{" "}</>}
+                    <Btn label="Delete" variant="danger" onClick={() => del(i.id)} />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+    </>
+  );
+}
+
+function Newsletter({ toast }: { toast: (m: string, t?: "ok" | "err") => void }) {
+  const [tab, setTab] = useState<"issues" | "subs">("issues");
+  return (
+    <>
+      <div style={T.title}>Newsletter</div>
+      <div style={{ display: "flex", gap: 8, marginBottom: 22 }}>
+        <Btn label="Issues" variant={tab === "issues" ? "primary" : "ghost"} onClick={() => setTab("issues")} />
+        <Btn label="Subscribers" variant={tab === "subs" ? "primary" : "ghost"} onClick={() => setTab("subs")} />
+      </div>
+      {tab === "issues" ? <Issues toast={toast} /> : <Subscribers toast={toast} />}
+    </>
+  );
+}
+
+type Page = "dashboard" | "content" | "newsletter" | "users" | "leads" | "sessions" | "wallets" | "svc:auth" | "svc:email" | "svc:stripe" | "svc:crypto" | "svc:database" | "svc:storage" | "svc:agent" | "mcp" | "skills" | "cron" | "push" | "logs" | "jobs" | "apikeys" | "webhooks" | "flags" | "audit" | "notifs" | "faq";
 type Skill = { id: string; name: string; description: string | null; systemPrompt: string; provider: string; model: string; temperature: string; maxTokens: number; tools: string | null; enabled: boolean; createdAt: string };
 type WebhookEndpoint = { id: string; name: string; url: string; secret: string; events: string; enabled: boolean; createdAt: string };
 type WebhookDelivery = { id: string; endpointId: string; url: string; event: string; status: string; attempts: number; responseStatus: number | null; responseBody: string | null; createdAt: string };
@@ -2524,8 +2667,9 @@ type Job = { id: string; type: string; status: string; attempts: number; maxAtte
 const NAV = [
   { section: "General", icon: "grid", items: [
     { id: "dashboard", label: "Dashboard", icon: "home" },
-    { id: "content",   label: "Content",   icon: "grid" },
-    { id: "leads",     label: "Leads",     icon: "mail" },
+    { id: "content",    label: "Content",    icon: "grid" },
+    { id: "newsletter", label: "Newsletter", icon: "bell" },
+    { id: "leads",      label: "Leads",      icon: "mail" },
     { id: "users",     label: "Users",     icon: "users" },
     { id: "sessions",  label: "Sessions",  icon: "clock" },
     { id: "wallets",   label: "Wallets",   icon: "wallet" },
@@ -2637,7 +2781,8 @@ function App() {
 
       <main style={T.main}>
         {page === "dashboard" && <Dashboard />}
-        {page === "content"   && <Content toast={showToast} />}
+        {page === "content"    && <Content toast={showToast} />}
+        {page === "newsletter" && <Newsletter toast={showToast} />}
         {page === "leads"     && <Leads toast={showToast} />}
         {page === "users"     && <Users toast={showToast} />}
         {page === "sessions"  && <Sessions toast={showToast} />}

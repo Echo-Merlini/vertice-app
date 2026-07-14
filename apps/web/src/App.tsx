@@ -8,6 +8,7 @@ import { FlagshipSection } from "./sections/FlagshipSection";
 import { ProjectsSection } from "./sections/ProjectsSection";
 import { ContactSection } from "./sections/ContactSection";
 import { WorkDetailPage } from "./pages/WorkDetailPage";
+import { NewsPage } from "./pages/NewsPage";
 
 function Home() {
   return (
@@ -29,6 +30,7 @@ export default function App() {
     <Routes>
       <Route path="/" element={<Home />} />
       <Route path="/work/:slug" element={<WorkDetailPage />} />
+      <Route path="/news" element={<NewsPage />} />
     </Routes>
   );
 }

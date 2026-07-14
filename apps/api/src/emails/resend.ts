@@ -8,6 +8,14 @@ import { InvoiceEmail } from "@/emails/templates/invoice";
 const resend = new Resend(process.env.RESEND_API_KEY!);
 const FROM = process.env.EMAIL_FROM ?? "noreply@yourdomain.com";
 
+/** Raw HTML email — used by the newsletter sender. Throws on Resend errors
+ * (the SDK returns { error } rather than throwing) so delivery counts are honest. */
+export async function sendRawEmail({ to, subject, html }: { to: string; subject: string; html: string }) {
+  const res = await resend.emails.send({ from: FROM, to, subject, html });
+  if ((res as any)?.error) throw new Error((res as any).error?.message || "Resend error");
+  return res;
+}
+
 export async function sendWelcomeEmail({
   to,
   name,

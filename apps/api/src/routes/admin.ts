@@ -5,8 +5,9 @@ import {
   user, session, wallet, settings, cronJob, pushSubscription, appLog, apiKey,
   skill, conversation, webhookEndpoint, webhookDelivery, featureFlag,
   notification, auditLog, jobQueue, agentExecutionLog, lead,
-  contentCard, siteText,
+  contentCard, siteText, subscriber, newsletter,
 } from "@/db/schema";
+import { sendRawEmail } from "@/emails/resend";
 import { eq, count, desc, and, asc } from "drizzle-orm";
 import { scheduleJob, stopJob, isRunning, runJobNow } from "@/lib/cron";
 import { createApiKey, revokeApiKey } from "@/lib/apikeys";
@@ -207,6 +208,79 @@ adminRoutes.patch("/api/content/text", requireAdmin, async (c) => {
   }
   audit(c, "content.text.updated", "site_text", lang, undefined, { lang, keys: entries.map(([k]) => k) });
   return c.json({ ok: true, updated: entries.length });
+});
+
+// ─── API: Newsletter — subscribers ───────────────────────
+adminRoutes.get("/api/newsletter/subscribers", requireAdmin, async (c) => {
+  const rows = await db.select().from(subscriber).orderBy(desc(subscriber.createdAt)).limit(1000);
+  return c.json(rows);
+});
+
+adminRoutes.delete("/api/newsletter/subscribers/:id", requireAdmin, async (c) => {
+  const id = c.req.param("id");
+  await db.delete(subscriber).where(eq(subscriber.id, id));
+  audit(c, "subscriber.deleted", "subscriber", id);
+  return c.json({ ok: true });
+});
+
+// ─── API: Newsletter — issues ────────────────────────────
+adminRoutes.get("/api/newsletter", requireAdmin, async (c) => {
+  const rows = await db.select().from(newsletter).orderBy(desc(newsletter.createdAt)).limit(200);
+  return c.json(rows);
+});
+
+adminRoutes.post("/api/newsletter", requireAdmin, async (c) => {
+  const b = await c.req.json<Record<string, unknown>>();
+  const id = nanoid();
+  await db.insert(newsletter).values({
+    id,
+    subject: String(b.subject || "Untitled"),
+    body: String(b.body ?? ""),
+    excerpt: b.excerpt ? String(b.excerpt) : null,
+    lang: b.lang === "pt" ? "pt" : "en",
+    status: "draft",
+  });
+  audit(c, "newsletter.created", "newsletter", id, undefined, { subject: b.subject });
+  return c.json({ ok: true, id });
+});
+
+adminRoutes.patch("/api/newsletter/:id", requireAdmin, async (c) => {
+  const id = c.req.param("id");
+  const b = await c.req.json<Record<string, unknown>>();
+  const patch: Record<string, unknown> = {};
+  if ("subject" in b) patch.subject = String(b.subject ?? "");
+  if ("body" in b) patch.body = String(b.body ?? "");
+  if ("excerpt" in b) patch.excerpt = b.excerpt ? String(b.excerpt) : null;
+  if ("lang" in b) patch.lang = b.lang === "pt" ? "pt" : "en";
+  await db.update(newsletter).set(patch).where(eq(newsletter.id, id));
+  audit(c, "newsletter.updated", "newsletter", id, undefined, patch);
+  return c.json({ ok: true });
+});
+
+adminRoutes.delete("/api/newsletter/:id", requireAdmin, async (c) => {
+  const id = c.req.param("id");
+  await db.delete(newsletter).where(eq(newsletter.id, id));
+  audit(c, "newsletter.deleted", "newsletter", id);
+  return c.json({ ok: true });
+});
+
+// Send an issue to all active subscribers, then publish it on the News page.
+adminRoutes.post("/api/newsletter/:id/send", requireAdmin, async (c) => {
+  const id = c.req.param("id");
+  const [issue] = await db.select().from(newsletter).where(eq(newsletter.id, id)).limit(1);
+  if (!issue) return c.json({ error: "Not found" }, 404);
+
+  const subs = await db.select().from(subscriber).where(eq(subscriber.status, "active"));
+  let delivered = 0; const failures: string[] = [];
+  for (const s of subs) {
+    try { await sendRawEmail({ to: s.email, subject: issue.subject, html: issue.body }); delivered++; }
+    catch (e: any) { failures.push(`${s.email}: ${e.message}`); }
+  }
+
+  // Publish regardless of delivery so it shows on the page ("available after send").
+  await db.update(newsletter).set({ status: "sent", sentAt: new Date(), recipientCount: delivered }).where(eq(newsletter.id, id));
+  audit(c, "newsletter.sent", "newsletter", id, undefined, { subscribers: subs.length, delivered, failed: failures.length });
+  return c.json({ ok: true, subscribers: subs.length, delivered, failed: failures.length, sample: failures.slice(0, 3) });
 });
 
 // ─── API: Sessions ───────────────────────────────────────

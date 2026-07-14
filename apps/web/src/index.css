@@ -66,3 +66,15 @@ body,
     animation: none;
   }
 }
+
+/* Newsletter HTML body (admin-authored) on the News page */
+.news-body h1, .news-body h2, .news-body h3 { color: #F6F6F8; font-weight: 600; letter-spacing: -0.02em; margin: 1.4em 0 0.5em; line-height: 1.2; }
+.news-body h2 { font-size: 1.5rem; }
+.news-body h3 { font-size: 1.2rem; }
+.news-body p { margin: 0 0 1em; }
+.news-body a { color: #E0A24C; text-decoration: underline; text-underline-offset: 2px; }
+.news-body ul, .news-body ol { margin: 0 0 1em 1.25em; }
+.news-body li { margin: 0.25em 0; }
+.news-body img { max-width: 100%; border-radius: 14px; margin: 1em 0; }
+.news-body blockquote { border-left: 2px solid #A15E1E; padding-left: 1em; color: #9aa0ad; font-style: italic; margin: 1em 0; }
+.news-body code { font-family: ui-monospace, monospace; background: #191B21; padding: 0.1em 0.35em; border-radius: 5px; font-size: 0.9em; }
