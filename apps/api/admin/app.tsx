@@ -2153,7 +2153,54 @@ function FAQ() {
 }
 
 // ─── Sidebar ─────────────────────────────────────────────
-type Page = "dashboard" | "users" | "sessions" | "wallets" | "svc:auth" | "svc:email" | "svc:stripe" | "svc:crypto" | "svc:database" | "svc:storage" | "svc:agent" | "mcp" | "skills" | "cron" | "push" | "logs" | "jobs" | "apikeys" | "webhooks" | "flags" | "audit" | "notifs" | "faq";
+// ─── Leads (CRM) ─────────────────────────────────────────
+type Lead = { id: string; name: string; email: string; message: string | null; source: string; status: string; createdAt: string };
+
+function Leads({ toast }: { toast: (m: string, t?: "ok" | "err") => void }) {
+  const [leads, setLeads] = useState<Lead[]>([]);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => { api<Lead[]>("/leads").then(l => { setLeads(l); setLoading(false); }).catch(() => setLoading(false)); }, []);
+  const setStatus = async (id: string, status: string) => {
+    try { await api(`/leads/${id}`, { method: "PATCH", body: JSON.stringify({ status }) }); setLeads(p => p.map(l => l.id === id ? { ...l, status } : l)); toast("Saved"); }
+    catch (e: any) { toast(e.message, "err"); }
+  };
+  const del = async (id: string) => {
+    if (!confirm("Delete this lead?")) return;
+    try { await api(`/leads/${id}`, { method: "DELETE" }); setLeads(p => p.filter(l => l.id !== id)); toast("Deleted"); }
+    catch (e: any) { toast(e.message, "err"); }
+  };
+  return (
+    <>
+      <div style={T.title}>Leads <span style={{ fontSize: 14, fontWeight: 400, color: C.muted }}>({leads.length})</span></div>
+      <div style={T.card}>
+        {loading ? <div style={T.empty}>Loading…</div> : !leads.length ? <div style={T.empty}>No leads yet</div> : (
+          <table style={T.table}>
+            <thead><tr>{["Received","Name","Email","Message","Source","Status",""].map(h => <th key={h} style={T.th}>{h}</th>)}</tr></thead>
+            <tbody>
+              {leads.map(l => (
+                <tr key={l.id}>
+                  <td style={{ ...T.td, color: C.muted, whiteSpace: "nowrap" as const }}>{new Date(l.createdAt).toLocaleDateString()}</td>
+                  <td style={T.td}>{l.name}</td>
+                  <td style={T.td}><a href={`mailto:${l.email}`} style={{ color: C.accent, textDecoration: "none" }}>{l.email}</a></td>
+                  <td style={{ ...T.td, maxWidth: 340, color: C.faint }}>{l.message ?? <span style={{ color: C.border }}>—</span>}</td>
+                  <td style={T.td}><span style={T.chip}>{l.source}</span></td>
+                  <td style={T.td}>
+                    <select value={l.status} onChange={e => setStatus(l.id, e.target.value)} style={{ background: C.inputBg, border: `1px solid ${C.border}`, color: C.text, borderRadius: 6, padding: "4px 8px", fontSize: 12, cursor: "pointer" }}>
+                      <option value="new">New</option><option value="contacted">Contacted</option><option value="qualified">Qualified</option><option value="closed">Closed</option>
+                    </select>
+                  </td>
+                  <td style={T.td}><Btn label="Delete" variant="danger" onClick={() => del(l.id)} /></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+    </>
+  );
+}
+
+type Page = "dashboard" | "users" | "leads" | "sessions" | "wallets" | "svc:auth" | "svc:email" | "svc:stripe" | "svc:crypto" | "svc:database" | "svc:storage" | "svc:agent" | "mcp" | "skills" | "cron" | "push" | "logs" | "jobs" | "apikeys" | "webhooks" | "flags" | "audit" | "notifs" | "faq";
 type Skill = { id: string; name: string; description: string | null; systemPrompt: string; provider: string; model: string; temperature: string; maxTokens: number; tools: string | null; enabled: boolean; createdAt: string };
 type WebhookEndpoint = { id: string; name: string; url: string; secret: string; events: string; enabled: boolean; createdAt: string };
 type WebhookDelivery = { id: string; endpointId: string; url: string; event: string; status: string; attempts: number; responseStatus: number | null; responseBody: string | null; createdAt: string };
@@ -2165,6 +2212,7 @@ type Job = { id: string; type: string; status: string; attempts: number; maxAtte
 const NAV = [
   { section: "General", icon: "grid", items: [
     { id: "dashboard", label: "Dashboard", icon: "home" },
+    { id: "leads",     label: "Leads",     icon: "mail" },
     { id: "users",     label: "Users",     icon: "users" },
     { id: "sessions",  label: "Sessions",  icon: "clock" },
     { id: "wallets",   label: "Wallets",   icon: "wallet" },
@@ -2276,6 +2324,7 @@ function App() {
 
       <main style={T.main}>
         {page === "dashboard" && <Dashboard />}
+        {page === "leads"     && <Leads toast={showToast} />}
         {page === "users"     && <Users toast={showToast} />}
         {page === "sessions"  && <Sessions toast={showToast} />}
         {page === "wallets"   && <Wallets />}

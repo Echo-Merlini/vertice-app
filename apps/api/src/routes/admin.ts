@@ -4,7 +4,7 @@ import { db } from "@/db/client";
 import {
   user, session, wallet, settings, cronJob, pushSubscription, appLog, apiKey,
   skill, conversation, webhookEndpoint, webhookDelivery, featureFlag,
-  notification, auditLog, jobQueue, agentExecutionLog,
+  notification, auditLog, jobQueue, agentExecutionLog, lead,
 } from "@/db/schema";
 import { eq, count, desc, and } from "drizzle-orm";
 import { scheduleJob, stopJob, isRunning, runJobNow } from "@/lib/cron";
@@ -82,6 +82,29 @@ adminRoutes.delete("/api/users/:id", requireAdmin, async (c) => {
   const [target] = await db.select({ email: user.email, plan: user.plan }).from(user).where(eq(user.id, id));
   await db.delete(user).where(eq(user.id, id));
   audit(c, "user.deleted", "user", id, target as any);
+  return c.json({ ok: true });
+});
+
+// ─── API: Leads (CRM) ────────────────────────────────────
+adminRoutes.get("/api/leads", requireAdmin, async (c) => {
+  const rows = await db.select().from(lead).orderBy(desc(lead.createdAt)).limit(300);
+  return c.json(rows);
+});
+
+adminRoutes.patch("/api/leads/:id", requireAdmin, async (c) => {
+  const id = c.req.param("id");
+  const { status } = await c.req.json<{ status?: string }>();
+  const allowed = ["new", "contacted", "qualified", "closed"];
+  if (!status || !allowed.includes(status)) return c.json({ error: "Invalid status" }, 400);
+  await db.update(lead).set({ status }).where(eq(lead.id, id));
+  audit(c, "lead.updated", "lead", id, undefined, { status });
+  return c.json({ ok: true });
+});
+
+adminRoutes.delete("/api/leads/:id", requireAdmin, async (c) => {
+  const id = c.req.param("id");
+  await db.delete(lead).where(eq(lead.id, id));
+  audit(c, "lead.deleted", "lead", id);
   return c.json({ ok: true });
 });
 

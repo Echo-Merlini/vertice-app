@@ -1,6 +1,6 @@
 import { FadeIn } from "../components/FadeIn";
-import { BrassButton } from "../components/BrassButton";
 import { VerticeMark } from "../components/VerticeMark";
+import { ContactForm } from "../components/ContactForm";
 
 const NAV = [
   ["Services", "#services"],
@@ -28,7 +28,15 @@ export function ContactSection() {
           A stage to run, a product to ship, an agent to prove — start here.
         </FadeIn>
         <FadeIn delay={0.3} className="mt-10">
-          <BrassButton href={`mailto:${EMAIL}`}>{EMAIL}</BrassButton>
+          <ContactForm />
+        </FadeIn>
+        <FadeIn delay={0.4} className="mt-5">
+          <p className="text-sm text-slate/70">
+            or email{" "}
+            <a href={`mailto:${EMAIL}`} className="text-brassLight/90 hover:text-brassLight underline underline-offset-2">
+              {EMAIL}
+            </a>
+          </p>
         </FadeIn>
       </div>
 

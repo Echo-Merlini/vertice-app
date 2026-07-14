@@ -296,6 +296,20 @@ export const notification = pgTable("notification", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
+// ─── CRM: leads (from the public contact form) ───────────
+export const lead = pgTable("lead", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  email: text("email").notNull(),
+  message: text("message"),
+  source: text("source").notNull().default("website"),
+  status: text("status").notNull().default("new"), // new | contacted | qualified | closed
+  meta: text("meta"), // JSON: ip, ua, referer
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (t) => ({
+  byCreated: index("lead_created_idx").on(t.createdAt),
+}));
+
 // ─── Audit Log ───────────────────────────────────────────
 export const auditLog = pgTable("audit_log", {
   id: text("id").primaryKey(),
