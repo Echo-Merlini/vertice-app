@@ -11,5 +11,9 @@ RUN bun install
 # app source (node_modules / .env excluded via .dockerignore)
 COPY . .
 
+# build the admin SPA bundle (admin/app.tsx -> public/admin/app.js); the server
+# serves this static file, so it must exist in the image or /admin/app.js 500s.
+RUN bun run admin:build
+
 EXPOSE 3000
 CMD ["bun", "run", "src/index.ts"]
