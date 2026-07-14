@@ -1,18 +1,18 @@
 import { useEffect, useRef, useState } from "react";
 import { ArrowUpRight } from "lucide-react";
 import { VerticeMark } from "../components/VerticeMark";
-import { PROJECTS, Project } from "../data/projects";
+import { useContent, Card } from "../content/ContentContext";
 
-function Tile({ p }: { p: Project }) {
+function Tile({ p }: { p: Card }) {
   return (
     <a
-      href={`#${p.id}`}
+      href={`#${p.slug}`}
       className="group relative shrink-0 overflow-hidden rounded-2xl border border-white/8 transition-colors duration-300 hover:border-brassLight/50"
       style={{ width: 360, height: 230, background: "#191B21" }}
     >
       <div
         className="absolute inset-0 opacity-60"
-        style={{ background: `radial-gradient(circle at 70% 25%, ${p.glow}33 0%, transparent 60%)` }}
+        style={{ background: `radial-gradient(circle at 70% 25%, ${p.accent ?? "#A15E1E"}33 0%, transparent 60%)` }}
       />
       <div className="absolute inset-0 flex items-center justify-center opacity-90">
         <VerticeMark size={120} />
@@ -30,19 +30,21 @@ function Tile({ p }: { p: Project }) {
   );
 }
 
-// A row scrolled horizontally by page-scroll position (tripled for seamless run).
-function Row({ shift }: { shift: number }) {
-  const tiles = [...PROJECTS, ...PROJECTS, ...PROJECTS, ...PROJECTS];
+// A row scrolled horizontally by page-scroll position (tiled for a seamless run).
+function Row({ shift, work }: { shift: number; work: Card[] }) {
+  const tiles = [...work, ...work, ...work, ...work];
   return (
     <div className="flex gap-4" style={{ transform: `translateX(${shift}px)`, willChange: "transform" }}>
       {tiles.map((p, i) => (
-        <Tile key={`${p.id}-${i}`} p={p} />
+        <Tile key={`${p.slug}-${i}`} p={p} />
       ))}
     </div>
   );
 }
 
 export function WorkMarqueeSection() {
+  const { cards } = useContent();
+  const work = cards.work;
   const sectionRef = useRef<HTMLElement>(null);
   const [offset, setOffset] = useState(0);
 
@@ -62,8 +64,8 @@ export function WorkMarqueeSection() {
   return (
     <section ref={sectionRef} className="overflow-hidden py-10 md:py-14">
       <div className="flex flex-col gap-4 [mask-image:linear-gradient(90deg,transparent,#000_6%,#000_94%,transparent)]">
-        <Row shift={shift} />
-        <Row shift={-shift} />
+        <Row shift={shift} work={work} />
+        <Row shift={-shift} work={work} />
       </div>
     </section>
   );

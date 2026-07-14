@@ -1,6 +1,7 @@
 import { FadeIn } from "../components/FadeIn";
 import { VerticeMark } from "../components/VerticeMark";
 import { ContactForm } from "../components/ContactForm";
+import { useText } from "../content/ContentContext";
 
 const NAV = [
   ["Services", "#services"],
@@ -14,6 +15,9 @@ const NAV = [
 const EMAIL = "hello@vertice.pt";
 
 export function ContactSection() {
+  const heading1 = useText("contact.heading1");
+  const heading2 = useText("contact.heading2");
+  const sub = useText("contact.sub");
   return (
     <footer id="contact" className="border-t border-white/8 px-6 md:px-10 pt-24 md:pt-32 pb-10">
       {/* CTA */}
@@ -22,10 +26,10 @@ export function ContactSection() {
           <VerticeMark size={64} spin className="mx-auto mb-8 opacity-90" />
         </FadeIn>
         <FadeIn as="h2" delay={0.05} y={20} className="font-display font-medium tracking-tighter2 text-4xl sm:text-5xl md:text-6xl text-paper">
-          Let&apos;s build something<br className="hidden sm:block" /> that <span className="brass-text">verifies itself.</span>
+          {heading1}<br className="hidden sm:block" /> <span className="brass-text">{heading2}</span>
         </FadeIn>
         <FadeIn as="p" delay={0.15} className="mt-6 font-serif italic text-slate text-lg md:text-xl">
-          A stage to run, a product to ship, an agent to prove — start here.
+          {sub}
         </FadeIn>
         <FadeIn delay={0.3} className="mt-10">
           <ContactForm />

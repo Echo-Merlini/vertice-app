@@ -310,6 +310,33 @@ export const lead = pgTable("lead", {
   byCreated: index("lead_created_idx").on(t.createdAt),
 }));
 
+// ─── Site content: manageable marketing cards + editable text ──
+// Drives the public marketing front (apps/web). Seeded on first boot from the
+// hardcoded defaults so the site looks identical until an admin edits it.
+export const contentCard = pgTable("content_card", {
+  id: text("id").primaryKey(),
+  section: text("section").notNull().default("work"), // work | services
+  slug: text("slug").notNull(),                        // anchor target: work-01 / services / events …
+  n: text("n").notNull().default(""),                  // display index "01"
+  category: text("category"),                          // eyebrow label (work cards)
+  name: text("name").notNull(),                        // card title
+  body: text("body").notNull().default(""),            // outcome / description
+  tags: text("tags").notNull().default("[]"),          // JSON string[]
+  accent: text("accent"),                              // glow / tint color (#hex)
+  href: text("href"),                                  // optional external link
+  sortOrder: integer("sort_order").notNull().default(0),
+  visible: boolean("visible").notNull().default(true),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (t) => ({
+  bySection: index("content_card_section_idx").on(t.section, t.sortOrder),
+}));
+
+export const siteText = pgTable("site_text", {
+  key: text("key").primaryKey(),        // e.g. "hero.title1"
+  value: text("value").notNull().default(""),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
 // ─── Audit Log ───────────────────────────────────────────
 export const auditLog = pgTable("audit_log", {
   id: text("id").primaryKey(),

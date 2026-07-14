@@ -2200,7 +2200,187 @@ function Leads({ toast }: { toast: (m: string, t?: "ok" | "err") => void }) {
   );
 }
 
-type Page = "dashboard" | "users" | "leads" | "sessions" | "wallets" | "svc:auth" | "svc:email" | "svc:stripe" | "svc:crypto" | "svc:database" | "svc:storage" | "svc:agent" | "mcp" | "skills" | "cron" | "push" | "logs" | "jobs" | "apikeys" | "webhooks" | "flags" | "audit" | "notifs" | "faq";
+// ─── Content manager: marketing cards + site text ────────
+type ContentCard = { id: string; section: string; slug: string; n: string; category: string | null; name: string; body: string; tags: string; accent: string | null; href: string | null; sortOrder: number; visible: boolean };
+type SiteTextRow = { key: string; value: string; updatedAt: string };
+
+function parseTags(raw: string): string[] { try { const v = JSON.parse(raw); return Array.isArray(v) ? v.map(String) : []; } catch { return []; } }
+
+type CardDraft = { id: string | null; section: string; slug: string; n: string; category: string; name: string; body: string; tags: string; accent: string; href: string; visible: boolean };
+
+function CardEditor({ draft, setDraft, onSave, onCancel }: { draft: CardDraft; setDraft: (d: CardDraft) => void; onSave: () => void; onCancel: () => void }) {
+  const set = (k: keyof CardDraft, v: any) => setDraft({ ...draft, [k]: v });
+  const field = (label: string, k: keyof CardDraft, ph = "") => (
+    <div><label style={T.label}>{label}</label><input style={T.input} value={draft[k] as string} placeholder={ph} onChange={e => set(k, e.target.value)} /></div>
+  );
+  return (
+    <div style={{ ...T.card, border: `1px solid ${C.accentDark}` }}>
+      <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 16 }}>{draft.id ? "Edit card" : "New card"}</div>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+        <div><label style={T.label}>Section</label>
+          <select style={T.input} value={draft.section} onChange={e => set("section", e.target.value)}>
+            <option value="work">Work (selected work)</option>
+            <option value="services">Services (disciplines)</option>
+          </select>
+        </div>
+        {field("Number (e.g. 01)", "n", "01")}
+        {field("Name", "name", "Turnkey Live Production")}
+        {field("Category / eyebrow", "category", "Events")}
+        {field("Anchor slug", "slug", "work-01")}
+        {field("Accent color (#hex)", "accent", "#A15E1E")}
+      </div>
+      <div style={{ marginTop: 14 }}><label style={T.label}>Body</label>
+        <textarea style={{ ...T.input, minHeight: 70, fontFamily: "inherit", resize: "vertical" as const }} value={draft.body} onChange={e => set("body", e.target.value)} />
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginTop: 14 }}>
+        {field("Tags (comma-separated)", "tags", "FOH, Staging, Lighting")}
+        {field("Link (optional)", "href", "https://…")}
+      </div>
+      <label style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 14, fontSize: 13, color: C.faint, cursor: "pointer" }}>
+        <input type="checkbox" checked={draft.visible} onChange={e => set("visible", e.target.checked)} /> Visible on site
+      </label>
+      <div style={{ display: "flex", gap: 8, marginTop: 18 }}>
+        <Btn label={draft.id ? "Save changes" : "Create card"} onClick={onSave} />
+        <Btn label="Cancel" variant="ghost" onClick={onCancel} />
+      </div>
+    </div>
+  );
+}
+
+function CardsManager({ toast }: { toast: (m: string, t?: "ok" | "err") => void }) {
+  const [cards, setCards] = useState<ContentCard[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [draft, setDraft] = useState<CardDraft | null>(null);
+
+  const load = () => api<ContentCard[]>("/content/cards").then(cs => { setCards(cs); setLoading(false); }).catch(() => setLoading(false));
+  useEffect(() => { load(); }, []);
+
+  const startEdit = (c: ContentCard) => setDraft({ id: c.id, section: c.section, slug: c.slug, n: c.n, category: c.category ?? "", name: c.name, body: c.body, tags: parseTags(c.tags).join(", "), accent: c.accent ?? "", href: c.href ?? "", visible: c.visible });
+  const startNew = (section: string) => setDraft({ id: null, section, slug: "", n: "", category: "", name: "", body: "", tags: "", accent: "", href: "", visible: true });
+
+  const save = async () => {
+    if (!draft) return;
+    const payload = { section: draft.section, slug: draft.slug, n: draft.n, category: draft.category, name: draft.name, body: draft.body, accent: draft.accent, href: draft.href, visible: draft.visible, tags: draft.tags.split(",").map(s => s.trim()).filter(Boolean) };
+    try {
+      if (draft.id) await api(`/content/cards/${draft.id}`, { method: "PATCH", body: JSON.stringify(payload) });
+      else await api(`/content/cards`, { method: "POST", body: JSON.stringify(payload) });
+      toast("Saved"); setDraft(null); load();
+    } catch (e: any) { toast(e.message, "err"); }
+  };
+  const del = async (id: string) => {
+    if (!confirm("Delete this card?")) return;
+    try { await api(`/content/cards/${id}`, { method: "DELETE" }); setCards(p => p.filter(c => c.id !== id)); toast("Deleted"); }
+    catch (e: any) { toast(e.message, "err"); }
+  };
+  const toggleVis = async (c: ContentCard) => {
+    try { await api(`/content/cards/${c.id}`, { method: "PATCH", body: JSON.stringify({ visible: !c.visible }) }); setCards(p => p.map(x => x.id === c.id ? { ...x, visible: !c.visible } : x)); }
+    catch (e: any) { toast(e.message, "err"); }
+  };
+
+  const sectionTable = (section: string, label: string) => {
+    const rows = cards.filter(c => c.section === section);
+    return (
+      <div style={{ marginBottom: 26 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: C.faint, textTransform: "uppercase", letterSpacing: 1 }}>{label} <span style={{ color: C.muted }}>({rows.length})</span></div>
+          <Btn label={`+ Add ${label} card`} variant="ghost" onClick={() => startNew(section)} />
+        </div>
+        <div style={T.card}>
+          {!rows.length ? <div style={T.empty}>No cards</div> : (
+            <table style={T.table}>
+              <thead><tr>{["#", "Name", "Category", "Tags", "Shown", ""].map(h => <th key={h} style={T.th}>{h}</th>)}</tr></thead>
+              <tbody>
+                {rows.map(c => (
+                  <tr key={c.id} style={{ opacity: c.visible ? 1 : 0.5 }}>
+                    <td style={{ ...T.td, color: C.muted, whiteSpace: "nowrap" }}>{c.n}</td>
+                    <td style={{ ...T.td, fontWeight: 600 }}>{c.name}</td>
+                    <td style={{ ...T.td, color: C.faint }}>{c.category ?? "—"}</td>
+                    <td style={{ ...T.td, color: C.faint, maxWidth: 240 }}>{parseTags(c.tags).map(t => <span key={t} style={{ ...T.chip, marginRight: 4 }}>{t}</span>)}</td>
+                    <td style={T.td}><span onClick={() => toggleVis(c)} style={{ cursor: "pointer", color: c.visible ? C.success : C.muted, fontSize: 12 }}>{c.visible ? "● shown" : "○ hidden"}</span></td>
+                    <td style={{ ...T.td, whiteSpace: "nowrap" }}>
+                      <Btn label="Edit" variant="ghost" onClick={() => startEdit(c)} />{" "}
+                      <Btn label="Delete" variant="danger" onClick={() => del(c.id)} />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <>
+      {draft && <CardEditor draft={draft} setDraft={setDraft} onSave={save} onCancel={() => setDraft(null)} />}
+      {loading ? <div style={T.empty}>Loading…</div> : (<>
+        {sectionTable("work", "Work")}
+        {sectionTable("services", "Services")}
+      </>)}
+    </>
+  );
+}
+
+const TEXT_GROUPS: { prefix: string; label: string }[] = [
+  { prefix: "hero.", label: "Hero / header" },
+  { prefix: "services.", label: "Services heading" },
+  { prefix: "contact.", label: "Contact heading" },
+];
+
+function SiteTextManager({ toast }: { toast: (m: string, t?: "ok" | "err") => void }) {
+  const [rows, setRows] = useState<SiteTextRow[]>([]);
+  const [draft, setDraft] = useState<Record<string, string>>({});
+  const [loading, setLoading] = useState(true);
+  useEffect(() => { api<SiteTextRow[]>("/content/text").then(r => { setRows(r); setDraft(Object.fromEntries(r.map(x => [x.key, x.value]))); setLoading(false); }).catch(() => setLoading(false)); }, []);
+  const save = async () => {
+    try { const r = await api<{ updated: number }>("/content/text", { method: "PATCH", body: JSON.stringify(draft) }); toast(`Saved ${r.updated} field(s)`); }
+    catch (e: any) { toast(e.message, "err"); }
+  };
+  if (loading) return <div style={T.empty}>Loading…</div>;
+  const label = (k: string) => k.split(".").slice(1).join(".").replace(/([A-Z])/g, " $1");
+  const ungrouped = rows.filter(r => !TEXT_GROUPS.some(g => r.key.startsWith(g.prefix)));
+  const groups = [...TEXT_GROUPS.map(g => ({ label: g.label, keys: rows.filter(r => r.key.startsWith(g.prefix)).map(r => r.key) })), ...(ungrouped.length ? [{ label: "Other", keys: ungrouped.map(r => r.key) }] : [])];
+  return (
+    <>
+      {groups.map(g => (
+        <div key={g.label} style={{ marginBottom: 22 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: C.faint, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>{g.label}</div>
+          <div style={T.card}>
+            {g.keys.map(k => {
+              const long = (draft[k] ?? "").length > 60;
+              return (
+                <div key={k} style={{ marginBottom: 14 }}>
+                  <label style={T.label}>{label(k)} <span style={{ color: C.muted, fontWeight: 400 }}>· {k}</span></label>
+                  {long
+                    ? <textarea style={{ ...T.input, minHeight: 56, fontFamily: "inherit", resize: "vertical" as const }} value={draft[k] ?? ""} onChange={e => setDraft({ ...draft, [k]: e.target.value })} />
+                    : <input style={T.input} value={draft[k] ?? ""} onChange={e => setDraft({ ...draft, [k]: e.target.value })} />}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+      <Btn label="Save all text" onClick={save} />
+    </>
+  );
+}
+
+function Content({ toast }: { toast: (m: string, t?: "ok" | "err") => void }) {
+  const [tab, setTab] = useState<"cards" | "text">("cards");
+  return (
+    <>
+      <div style={T.title}>Content <span style={{ fontSize: 14, fontWeight: 400, color: C.muted }}>· marketing site</span></div>
+      <div style={{ display: "flex", gap: 8, marginBottom: 22 }}>
+        <Btn label="Cards" variant={tab === "cards" ? "primary" : "ghost"} onClick={() => setTab("cards")} />
+        <Btn label="Site Text" variant={tab === "text" ? "primary" : "ghost"} onClick={() => setTab("text")} />
+      </div>
+      {tab === "cards" ? <CardsManager toast={toast} /> : <SiteTextManager toast={toast} />}
+    </>
+  );
+}
+
+type Page = "dashboard" | "content" | "users" | "leads" | "sessions" | "wallets" | "svc:auth" | "svc:email" | "svc:stripe" | "svc:crypto" | "svc:database" | "svc:storage" | "svc:agent" | "mcp" | "skills" | "cron" | "push" | "logs" | "jobs" | "apikeys" | "webhooks" | "flags" | "audit" | "notifs" | "faq";
 type Skill = { id: string; name: string; description: string | null; systemPrompt: string; provider: string; model: string; temperature: string; maxTokens: number; tools: string | null; enabled: boolean; createdAt: string };
 type WebhookEndpoint = { id: string; name: string; url: string; secret: string; events: string; enabled: boolean; createdAt: string };
 type WebhookDelivery = { id: string; endpointId: string; url: string; event: string; status: string; attempts: number; responseStatus: number | null; responseBody: string | null; createdAt: string };
@@ -2212,6 +2392,7 @@ type Job = { id: string; type: string; status: string; attempts: number; maxAtte
 const NAV = [
   { section: "General", icon: "grid", items: [
     { id: "dashboard", label: "Dashboard", icon: "home" },
+    { id: "content",   label: "Content",   icon: "grid" },
     { id: "leads",     label: "Leads",     icon: "mail" },
     { id: "users",     label: "Users",     icon: "users" },
     { id: "sessions",  label: "Sessions",  icon: "clock" },
@@ -2324,6 +2505,7 @@ function App() {
 
       <main style={T.main}>
         {page === "dashboard" && <Dashboard />}
+        {page === "content"   && <Content toast={showToast} />}
         {page === "leads"     && <Leads toast={showToast} />}
         {page === "users"     && <Users toast={showToast} />}
         {page === "sessions"  && <Sessions toast={showToast} />}

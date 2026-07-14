@@ -1,7 +1,7 @@
 import { useRef } from "react";
 import { motion, MotionValue, useScroll, useTransform } from "framer-motion";
 import { VerticeMark } from "../components/VerticeMark";
-import { PROJECTS, Project } from "../data/projects";
+import { useContent, Card } from "../content/ContentContext";
 
 const radius = "rounded-[32px] sm:rounded-[40px]";
 
@@ -12,16 +12,17 @@ function ProjectCard({
   range,
   targetScale,
 }: {
-  project: Project;
+  project: Card;
   index: number;
   progress: MotionValue<number>;
   range: [number, number];
   targetScale: number;
 }) {
   const scale = useTransform(progress, range, [1, targetScale]);
+  const accent = project.accent ?? "#A15E1E";
 
   return (
-    <div id={project.id} className="h-[86vh] flex items-center justify-center sticky top-24 md:top-28 scroll-mt-24">
+    <div id={project.slug} className="h-[86vh] flex items-center justify-center sticky top-24 md:top-28 scroll-mt-24">
       <motion.div
         style={{ scale, top: `${index * 26}px`, position: "relative", background: "#0C0D11" }}
         className={`w-full max-w-5xl border border-white/10 p-5 sm:p-7 md:p-9 ${radius}`}
@@ -46,7 +47,7 @@ function ProjectCard({
             >
               {project.name}
             </h3>
-            <p className="mt-4 text-slate leading-relaxed max-w-md">{project.outcome}</p>
+            <p className="mt-4 text-slate leading-relaxed max-w-md">{project.body}</p>
             <div className="mt-auto pt-6 flex flex-wrap gap-2">
               {project.tags.map((t) => (
                 <span
@@ -66,7 +67,7 @@ function ProjectCard({
           >
             <div
               className="absolute inset-0 opacity-60"
-              style={{ background: `radial-gradient(circle at 70% 30%, ${project.glow}33 0%, transparent 60%)` }}
+              style={{ background: `radial-gradient(circle at 70% 30%, ${accent}33 0%, transparent 60%)` }}
             />
             <div className="absolute inset-0 flex items-center justify-center opacity-90">
               <VerticeMark size={150} />
@@ -82,6 +83,8 @@ function ProjectCard({
 }
 
 export function ProjectsSection() {
+  const { cards } = useContent();
+  const work = cards.work;
   const container = useRef<HTMLDivElement>(null);
   const { scrollYProgress } = useScroll({
     target: container,
@@ -91,15 +94,15 @@ export function ProjectsSection() {
   return (
     <section className="px-6 md:px-10 pb-24">
       <div ref={container} className="relative">
-        {PROJECTS.map((project, i) => {
-          const targetScale = 1 - (PROJECTS.length - 1 - i) * 0.03;
+        {work.map((project, i) => {
+          const targetScale = 1 - (work.length - 1 - i) * 0.03;
           return (
             <ProjectCard
-              key={project.id}
+              key={project.slug}
               project={project}
               index={i}
               progress={scrollYProgress}
-              range={[i / PROJECTS.length, 1]}
+              range={[i / work.length, 1]}
               targetScale={targetScale}
             />
           );

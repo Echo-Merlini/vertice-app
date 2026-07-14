@@ -1,6 +1,7 @@
 import { FadeIn } from "../components/FadeIn";
 import { VerticeMark } from "../components/VerticeMark";
 import { BrassButton } from "../components/BrassButton";
+import { useText } from "../content/ContentContext";
 
 const NAV = [
   ["Services", "#services"],
@@ -11,6 +12,12 @@ const NAV = [
 ];
 
 export function HeroSection() {
+  const title1 = useText("hero.title1");
+  const title2 = useText("hero.title2");
+  const taglinePre = useText("hero.taglinePre");
+  const taglineAccent = useText("hero.taglineAccent");
+  const eyebrow = useText("hero.eyebrow");
+  const cta = useText("hero.cta");
   return (
     <section className="relative min-h-screen flex flex-col overflow-hidden">
       {/* brass glow */}
@@ -48,10 +55,10 @@ export function HeroSection() {
 
         <FadeIn as="h1" delay={0.1} y={24} className="font-display font-medium leading-[0.85] tracking-tightest">
           <span className="block whitespace-nowrap text-paper text-[19vw] sm:text-[16vw] md:text-[12rem] lg:text-[14rem]">
-            Vértice
+            {title1}
           </span>
           <span className="block brass-text text-[8.5vw] sm:text-[7vw] md:text-[4.75rem] lg:text-[5.5rem] tracking-tight -mt-1 md:-mt-3">
-            Criativo
+            {title2}
           </span>
         </FadeIn>
 
@@ -61,15 +68,15 @@ export function HeroSection() {
           y={16}
           className="mt-7 font-display font-medium text-lg sm:text-xl md:text-2xl tracking-tight text-slate"
         >
-          Don&apos;t trust. <span className="brass-text">Recompute.</span>
+          {taglinePre} <span className="brass-text">{taglineAccent}</span>
         </FadeIn>
 
         <FadeIn delay={0.35} y={16} className="mt-4 font-mono text-[11px] sm:text-xs uppercase tracking-[0.2em] text-slate/70">
-          Technical AV · Turnkey Events · Products · On-chain AI
+          {eyebrow}
         </FadeIn>
 
         <FadeIn delay={0.5} y={16} className="mt-10">
-          <BrassButton href="#contact">Start a project</BrassButton>
+          <BrassButton href="#contact">{cta}</BrassButton>
         </FadeIn>
       </div>
     </section>

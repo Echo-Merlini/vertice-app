@@ -5,8 +5,9 @@ import {
   user, session, wallet, settings, cronJob, pushSubscription, appLog, apiKey,
   skill, conversation, webhookEndpoint, webhookDelivery, featureFlag,
   notification, auditLog, jobQueue, agentExecutionLog, lead,
+  contentCard, siteText,
 } from "@/db/schema";
-import { eq, count, desc, and } from "drizzle-orm";
+import { eq, count, desc, and, asc } from "drizzle-orm";
 import { scheduleJob, stopJob, isRunning, runJobNow } from "@/lib/cron";
 import { createApiKey, revokeApiKey } from "@/lib/apikeys";
 import { generateVapidKeys } from "@/lib/push";
@@ -106,6 +107,76 @@ adminRoutes.delete("/api/leads/:id", requireAdmin, async (c) => {
   await db.delete(lead).where(eq(lead.id, id));
   audit(c, "lead.deleted", "lead", id);
   return c.json({ ok: true });
+});
+
+// ─── API: Site Content — cards ───────────────────────────
+const CARD_FIELDS = ["section", "slug", "n", "category", "name", "body", "accent", "href"] as const;
+
+adminRoutes.get("/api/content/cards", requireAdmin, async (c) => {
+  const rows = await db.select().from(contentCard).orderBy(asc(contentCard.section), asc(contentCard.sortOrder));
+  return c.json(rows);
+});
+
+adminRoutes.post("/api/content/cards", requireAdmin, async (c) => {
+  const b = await c.req.json<Record<string, unknown>>();
+  const section = b.section === "services" ? "services" : "work";
+  const [{ max }] = await db.select({ max: count() }).from(contentCard).where(eq(contentCard.section, section));
+  const id = nanoid();
+  await db.insert(contentCard).values({
+    id,
+    section,
+    slug: String(b.slug || `${section}-${id.slice(0, 6)}`),
+    n: String(b.n ?? ""),
+    category: b.category ? String(b.category) : null,
+    name: String(b.name || "Untitled"),
+    body: String(b.body ?? ""),
+    tags: JSON.stringify(Array.isArray(b.tags) ? b.tags.map(String) : []),
+    accent: b.accent ? String(b.accent) : null,
+    href: b.href ? String(b.href) : null,
+    sortOrder: Number(max) || 0,
+    visible: b.visible === false ? false : true,
+  });
+  audit(c, "content.card.created", "content_card", id, undefined, { section, name: b.name });
+  return c.json({ ok: true, id });
+});
+
+adminRoutes.patch("/api/content/cards/:id", requireAdmin, async (c) => {
+  const id = c.req.param("id");
+  const b = await c.req.json<Record<string, unknown>>();
+  const patch: Record<string, unknown> = { updatedAt: new Date() };
+  for (const f of CARD_FIELDS) if (f in b) patch[f] = b[f] === "" ? (f === "name" || f === "slug" ? b[f] : null) : b[f];
+  if ("tags" in b) patch.tags = JSON.stringify(Array.isArray(b.tags) ? b.tags.map(String) : []);
+  if ("visible" in b) patch.visible = !!b.visible;
+  if ("sortOrder" in b) patch.sortOrder = Number(b.sortOrder) || 0;
+  await db.update(contentCard).set(patch).where(eq(contentCard.id, id));
+  audit(c, "content.card.updated", "content_card", id, undefined, patch);
+  return c.json({ ok: true });
+});
+
+adminRoutes.delete("/api/content/cards/:id", requireAdmin, async (c) => {
+  const id = c.req.param("id");
+  await db.delete(contentCard).where(eq(contentCard.id, id));
+  audit(c, "content.card.deleted", "content_card", id);
+  return c.json({ ok: true });
+});
+
+// ─── API: Site Content — text ────────────────────────────
+adminRoutes.get("/api/content/text", requireAdmin, async (c) => {
+  const rows = await db.select().from(siteText).orderBy(asc(siteText.key));
+  return c.json(rows);
+});
+
+adminRoutes.patch("/api/content/text", requireAdmin, async (c) => {
+  const body = await c.req.json<Record<string, string>>();
+  const entries = Object.entries(body).filter(([k]) => typeof k === "string");
+  for (const [key, value] of entries) {
+    await db
+      .insert(siteText)
+      .values({ key, value: String(value ?? "") })
+      .onConflictDoUpdate({ target: siteText.key, set: { value: String(value ?? ""), updatedAt: new Date() } });
+  }
+  audit(c, "content.text.updated", "site_text", "batch", undefined, { keys: entries.map(([k]) => k) });
+  return c.json({ ok: true, updated: entries.length });
 });
 
 // ─── API: Sessions ───────────────────────────────────────

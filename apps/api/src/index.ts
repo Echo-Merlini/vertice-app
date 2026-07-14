@@ -89,6 +89,7 @@ const port = Number(process.env.PORT ?? 3000);
 
 setLogEmitter(emitLogEvent);
 seedAdmin().catch(e => console.warn("seedAdmin:", e.message));
+import("@/lib/seedContent").then(m => m.seedContent()).catch(e => console.warn("seedContent:", e.message));
 initCronJobs().catch(e => console.warn("initCronJobs:", e.message));
 registerWebhookWorker();
 startQueue();
