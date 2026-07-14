@@ -4,10 +4,12 @@ import { FadeIn } from "../components/FadeIn";
 import { VerticeMark } from "../components/VerticeMark";
 import { BrassButton } from "../components/BrassButton";
 import { API, useText } from "../content/ContentContext";
+import { useLang } from "../content/LanguageContext";
 
 type Msg = { role: "user" | "assistant"; content: string };
 
 function ChatBox() {
+  const { lang } = useLang();
   const intro = useText("assistant.intro");
   const placeholder = useText("assistant.placeholder");
   const [messages, setMessages] = useState<Msg[]>([]);
@@ -34,7 +36,7 @@ function ChatBox() {
       const r = await fetch(`${API}/assistant/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: text, history }),
+        body: JSON.stringify({ message: text, history, lang }),
       });
       const d = await r.json();
       setMessages((m) => [...m, { role: "assistant", content: d.reply || "…" }]);

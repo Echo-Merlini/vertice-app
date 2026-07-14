@@ -153,6 +153,7 @@ adminRoutes.post("/api/content/cards", requireAdmin, async (c) => {
     gallery: JSON.stringify(Array.isArray(b.gallery) ? b.gallery.map(String) : []),
     year: b.year ? String(b.year) : null,
     role: b.role ? String(b.role) : null,
+    i18n: b.i18n && typeof b.i18n === "object" ? JSON.stringify(b.i18n) : "{}",
     sortOrder: Number(max) || 0,
     visible: b.visible === false ? false : true,
   });
@@ -168,6 +169,7 @@ adminRoutes.patch("/api/content/cards/:id", requireAdmin, async (c) => {
   for (const f of CARD_FIELDS) if (f in b) patch[f] = b[f] === "" ? (keepEmpty.has(f) ? b[f] : null) : b[f];
   if ("tags" in b) patch.tags = JSON.stringify(Array.isArray(b.tags) ? b.tags.map(String) : []);
   if ("gallery" in b) patch.gallery = JSON.stringify(Array.isArray(b.gallery) ? b.gallery.map(String) : []);
+  if ("i18n" in b) patch.i18n = typeof b.i18n === "string" ? b.i18n : JSON.stringify(b.i18n ?? {});
   if ("visible" in b) patch.visible = !!b.visible;
   if ("sortOrder" in b) patch.sortOrder = Number(b.sortOrder) || 0;
   await db.update(contentCard).set(patch).where(eq(contentCard.id, id));
@@ -189,15 +191,21 @@ adminRoutes.get("/api/content/text", requireAdmin, async (c) => {
 });
 
 adminRoutes.patch("/api/content/text", requireAdmin, async (c) => {
-  const body = await c.req.json<Record<string, string>>();
-  const entries = Object.entries(body).filter(([k]) => typeof k === "string");
+  const body = await c.req.json<{ lang?: string; values?: Record<string, string> }>();
+  const lang = body.lang === "pt" ? "pt" : "en";
+  const values = body.values ?? {};
+  const entries = Object.entries(values).filter(([k]) => typeof k === "string");
   for (const [key, value] of entries) {
-    await db
-      .insert(siteText)
-      .values({ key, value: String(value ?? "") })
-      .onConflictDoUpdate({ target: siteText.key, set: { value: String(value ?? ""), updatedAt: new Date() } });
+    const v = String(value ?? "");
+    if (lang === "pt") {
+      await db.insert(siteText).values({ key, value: "", valuePt: v })
+        .onConflictDoUpdate({ target: siteText.key, set: { valuePt: v, updatedAt: new Date() } });
+    } else {
+      await db.insert(siteText).values({ key, value: v })
+        .onConflictDoUpdate({ target: siteText.key, set: { value: v, updatedAt: new Date() } });
+    }
   }
-  audit(c, "content.text.updated", "site_text", "batch", undefined, { keys: entries.map(([k]) => k) });
+  audit(c, "content.text.updated", "site_text", lang, undefined, { lang, keys: entries.map(([k]) => k) });
   return c.json({ ok: true, updated: entries.length });
 });
 

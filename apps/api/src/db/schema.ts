@@ -330,6 +330,7 @@ export const contentCard = pgTable("content_card", {
   gallery: text("gallery").notNull().default("[]"),    // JSON string[] of image paths
   year: text("year"),                                  // meta: year / period
   role: text("role"),                                  // meta: role / scope
+  i18n: text("i18n").notNull().default("{}"),          // JSON { pt: { name?, category?, body?, detail?, year?, role?, tags?[] } }
   sortOrder: integer("sort_order").notNull().default(0),
   visible: boolean("visible").notNull().default(true),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
@@ -339,7 +340,8 @@ export const contentCard = pgTable("content_card", {
 
 export const siteText = pgTable("site_text", {
   key: text("key").primaryKey(),        // e.g. "hero.title1"
-  value: text("value").notNull().default(""),
+  value: text("value").notNull().default(""),   // EN (default)
+  valuePt: text("value_pt"),                     // PT override (falls back to value)
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 

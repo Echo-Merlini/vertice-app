@@ -23,6 +23,7 @@ assistantRoutes.post(
     "json",
     z.object({
       message: z.string().min(1).max(2000),
+      lang: z.enum(["en", "pt"]).optional(),
       history: z
         .array(z.object({ role: z.enum(["user", "assistant"]), content: z.string().max(4000) }))
         .max(20)
@@ -30,8 +31,9 @@ assistantRoutes.post(
     })
   ),
   async (c) => {
+    const { lang } = c.req.valid("json");
     const [row] = await db.select().from(siteText).where(eq(siteText.key, "assistant.reply")).limit(1);
-    const reply = row?.value?.trim() || FALLBACK;
+    const reply = (lang === "pt" && row?.valuePt?.trim()) || row?.value?.trim() || FALLBACK;
     return c.json({ reply, stage: "preview" });
   }
 );

@@ -5,10 +5,12 @@ import { FadeIn } from "../components/FadeIn";
 import { VerticeMark } from "../components/VerticeMark";
 import { BrassButton } from "../components/BrassButton";
 import { API, imageUrl } from "../content/ContentContext";
+import { useLang } from "../content/LanguageContext";
 import { CardDetail } from "../content/defaults";
 
 export function WorkDetailPage() {
   const { slug } = useParams<{ slug: string }>();
+  const { lang } = useLang();
   const [card, setCard] = useState<CardDetail | null>(null);
   const [state, setState] = useState<"loading" | "ready" | "notfound">("loading");
 
@@ -16,12 +18,12 @@ export function WorkDetailPage() {
     window.scrollTo(0, 0);
     let alive = true;
     setState("loading");
-    fetch(`${API}/content/work/${slug}`)
+    fetch(`${API}/content/work/${slug}?lang=${lang}`)
       .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
       .then((d: CardDetail) => { if (alive) { setCard(d); setState("ready"); } })
       .catch(() => { if (alive) setState("notfound"); });
     return () => { alive = false; };
-  }, [slug]);
+  }, [slug, lang]);
 
   const accent = card?.accent ?? "#A15E1E";
   const hero = imageUrl(card?.image);

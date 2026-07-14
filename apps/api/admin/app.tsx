@@ -2201,12 +2201,19 @@ function Leads({ toast }: { toast: (m: string, t?: "ok" | "err") => void }) {
 }
 
 // ─── Content manager: marketing cards + site text ────────
-type ContentCard = { id: string; section: string; slug: string; n: string; category: string | null; name: string; body: string; tags: string; accent: string | null; href: string | null; detail: string; image: string | null; gallery: string; year: string | null; role: string | null; sortOrder: number; visible: boolean };
-type SiteTextRow = { key: string; value: string; updatedAt: string };
+type ContentCard = { id: string; section: string; slug: string; n: string; category: string | null; name: string; body: string; tags: string; accent: string | null; href: string | null; detail: string; image: string | null; gallery: string; year: string | null; role: string | null; i18n: string; sortOrder: number; visible: boolean };
+type SiteTextRow = { key: string; value: string; valuePt: string | null; updatedAt: string };
+type EditLang = "en" | "pt";
 
 function parseTags(raw: string): string[] { try { const v = JSON.parse(raw); return Array.isArray(v) ? v.map(String) : []; } catch { return []; } }
 
-type CardDraft = { id: string | null; section: string; slug: string; n: string; category: string; name: string; body: string; tags: string; accent: string; href: string; visible: boolean; detail: string; image: string; gallery: string[]; year: string; role: string };
+type CardDraft = { id: string | null; section: string; slug: string; n: string; category: string; name: string; body: string; tags: string; accent: string; href: string; visible: boolean; detail: string; image: string; gallery: string[]; year: string; role: string;
+  // Portuguese overlay (translatable fields only)
+  namePt: string; categoryPt: string; bodyPt: string; detailPt: string; yearPt: string; rolePt: string; tagsPt: string };
+
+function parsePt(i18nRaw: string): Record<string, any> {
+  try { return JSON.parse(i18nRaw || "{}").pt ?? {}; } catch { return {}; }
+}
 
 async function uploadImage(file: File): Promise<string> {
   const fd = new FormData();
@@ -2216,12 +2223,46 @@ async function uploadImage(file: File): Promise<string> {
   return (await res.json()).path as string;
 }
 
-function CardEditor({ draft, setDraft, onSave, onCancel, toast }: { draft: CardDraft; setDraft: (d: CardDraft) => void; onSave: () => void; onCancel: () => void; toast: (m: string, t?: "ok" | "err") => void }) {
+function CardEditor({ draft, setDraft, onSave, onCancel, toast, lang }: { draft: CardDraft; setDraft: (d: CardDraft) => void; onSave: () => void; onCancel: () => void; toast: (m: string, t?: "ok" | "err") => void; lang: EditLang }) {
   const [busy, setBusy] = useState(false);
   const set = (k: keyof CardDraft, v: any) => setDraft({ ...draft, [k]: v });
   const field = (label: string, k: keyof CardDraft, ph = "") => (
     <div><label style={T.label}>{label}</label><input style={T.input} value={draft[k] as string} placeholder={ph} onChange={e => set(k, e.target.value)} /></div>
   );
+  const isWork = draft.section === "work";
+
+  // ── Portuguese overlay editor ──
+  if (lang === "pt") {
+    return (
+      <div style={{ ...T.card, border: `1px solid ${C.accentDark}` }}>
+        <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 4 }}>Portuguese · {draft.name || "card"}</div>
+        <div style={{ fontSize: 12, color: C.muted, marginBottom: 16 }}>Placeholders show the English text. Leave a field blank to fall back to English. Images, colour, slug and order are shared — edit them in EN.</div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+          {field("Nome (PT)", "namePt", draft.name)}
+          {field("Categoria (PT)", "categoryPt", draft.category)}
+        </div>
+        <div style={{ marginTop: 14 }}><label style={T.label}>Resumo do cartão (PT)</label>
+          <textarea style={{ ...T.input, minHeight: 60, fontFamily: "inherit", resize: "vertical" as const }} value={draft.bodyPt} placeholder={draft.body} onChange={e => set("bodyPt", e.target.value)} />
+        </div>
+        <div style={{ marginTop: 14 }}>{field("Tags (PT, separadas por vírgula)", "tagsPt", draft.tags)}</div>
+        {isWork && (
+          <div style={{ marginTop: 20, paddingTop: 16, borderTop: `1px solid ${C.border}` }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: C.faint, textTransform: "uppercase", letterSpacing: 1, marginBottom: 12 }}>Página de detalhe (PT)</div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
+              {field("Ano (PT)", "yearPt", draft.year)}
+              {field("Função / âmbito (PT)", "rolePt", draft.role)}
+            </div>
+            <label style={T.label}>Descrição completa (PT)</label>
+            <textarea style={{ ...T.input, minHeight: 120, fontFamily: "inherit", resize: "vertical" as const }} value={draft.detailPt} placeholder={draft.detail} onChange={e => set("detailPt", e.target.value)} />
+          </div>
+        )}
+        <div style={{ display: "flex", gap: 8, marginTop: 18 }}>
+          <Btn label="Save Portuguese" onClick={onSave} />
+          <Btn label="Cancel" variant="ghost" onClick={onCancel} />
+        </div>
+      </div>
+    );
+  }
   const pickHero = async (f: File | null) => {
     if (!f) return; setBusy(true);
     try { set("image", await uploadImage(f)); toast("Image uploaded"); } catch (e: any) { toast(e.message, "err"); } finally { setBusy(false); }
@@ -2231,7 +2272,6 @@ function CardEditor({ draft, setDraft, onSave, onCancel, toast }: { draft: CardD
     try { const paths: string[] = []; for (const f of Array.from(files)) paths.push(await uploadImage(f)); setDraft({ ...draft, gallery: [...draft.gallery, ...paths] }); toast(`${paths.length} image(s) uploaded`); }
     catch (e: any) { toast(e.message, "err"); } finally { setBusy(false); }
   };
-  const isWork = draft.section === "work";
   return (
     <div style={{ ...T.card, border: `1px solid ${C.accentDark}` }}>
       <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 16 }}>{draft.id ? "Edit card" : "New card"}{busy && <span style={{ color: C.muted, fontWeight: 400, fontSize: 12 }}> · uploading…</span>}</div>
@@ -2306,7 +2346,7 @@ function CardEditor({ draft, setDraft, onSave, onCancel, toast }: { draft: CardD
   );
 }
 
-function CardsManager({ toast }: { toast: (m: string, t?: "ok" | "err") => void }) {
+function CardsManager({ toast, lang }: { toast: (m: string, t?: "ok" | "err") => void; lang: EditLang }) {
   const [cards, setCards] = useState<ContentCard[]>([]);
   const [loading, setLoading] = useState(true);
   const [draft, setDraft] = useState<CardDraft | null>(null);
@@ -2314,12 +2354,27 @@ function CardsManager({ toast }: { toast: (m: string, t?: "ok" | "err") => void 
   const load = () => api<ContentCard[]>("/content/cards").then(cs => { setCards(cs); setLoading(false); }).catch(() => setLoading(false));
   useEffect(() => { load(); }, []);
 
-  const startEdit = (c: ContentCard) => setDraft({ id: c.id, section: c.section, slug: c.slug, n: c.n, category: c.category ?? "", name: c.name, body: c.body, tags: parseTags(c.tags).join(", "), accent: c.accent ?? "", href: c.href ?? "", visible: c.visible, detail: c.detail ?? "", image: c.image ?? "", gallery: parseTags(c.gallery ?? "[]"), year: c.year ?? "", role: c.role ?? "" });
-  const startNew = (section: string) => setDraft({ id: null, section, slug: "", n: "", category: "", name: "", body: "", tags: "", accent: "", href: "", visible: true, detail: "", image: "", gallery: [], year: "", role: "" });
+  const startEdit = (c: ContentCard) => {
+    const pt = parsePt(c.i18n ?? "{}");
+    setDraft({ id: c.id, section: c.section, slug: c.slug, n: c.n, category: c.category ?? "", name: c.name, body: c.body, tags: parseTags(c.tags).join(", "), accent: c.accent ?? "", href: c.href ?? "", visible: c.visible, detail: c.detail ?? "", image: c.image ?? "", gallery: parseTags(c.gallery ?? "[]"), year: c.year ?? "", role: c.role ?? "",
+      namePt: pt.name ?? "", categoryPt: pt.category ?? "", bodyPt: pt.body ?? "", detailPt: pt.detail ?? "", yearPt: pt.year ?? "", rolePt: pt.role ?? "", tagsPt: Array.isArray(pt.tags) ? pt.tags.join(", ") : "" });
+  };
+  const startNew = (section: string) => setDraft({ id: null, section, slug: "", n: "", category: "", name: "", body: "", tags: "", accent: "", href: "", visible: true, detail: "", image: "", gallery: [], year: "", role: "",
+    namePt: "", categoryPt: "", bodyPt: "", detailPt: "", yearPt: "", rolePt: "", tagsPt: "" });
 
   const save = async () => {
     if (!draft) return;
-    const payload = { section: draft.section, slug: draft.slug, n: draft.n, category: draft.category, name: draft.name, body: draft.body, accent: draft.accent, href: draft.href, visible: draft.visible, tags: draft.tags.split(",").map(s => s.trim()).filter(Boolean), detail: draft.detail, image: draft.image, year: draft.year, role: draft.role, gallery: draft.gallery };
+    const ptTags = draft.tagsPt.split(",").map(s => s.trim()).filter(Boolean);
+    const pt: Record<string, any> = {};
+    if (draft.namePt) pt.name = draft.namePt;
+    if (draft.categoryPt) pt.category = draft.categoryPt;
+    if (draft.bodyPt) pt.body = draft.bodyPt;
+    if (draft.detailPt) pt.detail = draft.detailPt;
+    if (draft.yearPt) pt.year = draft.yearPt;
+    if (draft.rolePt) pt.role = draft.rolePt;
+    if (ptTags.length) pt.tags = ptTags;
+    const i18n = Object.keys(pt).length ? { pt } : {};
+    const payload = { section: draft.section, slug: draft.slug, n: draft.n, category: draft.category, name: draft.name, body: draft.body, accent: draft.accent, href: draft.href, visible: draft.visible, tags: draft.tags.split(",").map(s => s.trim()).filter(Boolean), detail: draft.detail, image: draft.image, year: draft.year, role: draft.role, gallery: draft.gallery, i18n };
     try {
       if (draft.id) await api(`/content/cards/${draft.id}`, { method: "PATCH", body: JSON.stringify(payload) });
       else await api(`/content/cards`, { method: "POST", body: JSON.stringify(payload) });
@@ -2342,7 +2397,7 @@ function CardsManager({ toast }: { toast: (m: string, t?: "ok" | "err") => void 
       <div style={{ marginBottom: 26 }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
           <div style={{ fontSize: 13, fontWeight: 700, color: C.faint, textTransform: "uppercase", letterSpacing: 1 }}>{label} <span style={{ color: C.muted }}>({rows.length})</span></div>
-          <Btn label={`+ Add ${label} card`} variant="ghost" onClick={() => startNew(section)} />
+          {lang === "en" && <Btn label={`+ Add ${label} card`} variant="ghost" onClick={() => startNew(section)} />}
         </div>
         <div style={T.card}>
           {!rows.length ? <div style={T.empty}>No cards</div> : (
@@ -2372,7 +2427,7 @@ function CardsManager({ toast }: { toast: (m: string, t?: "ok" | "err") => void 
 
   return (
     <>
-      {draft && <CardEditor draft={draft} setDraft={setDraft} onSave={save} onCancel={() => setDraft(null)} toast={toast} />}
+      {draft && <CardEditor draft={draft} setDraft={setDraft} onSave={save} onCancel={() => setDraft(null)} toast={toast} lang={lang} />}
       {loading ? <div style={T.empty}>Loading…</div> : (<>
         {sectionTable("work", "Work")}
         {sectionTable("services", "Services")}
@@ -2388,14 +2443,23 @@ const TEXT_GROUPS: { prefix: string; label: string }[] = [
   { prefix: "contact.", label: "Contact heading" },
 ];
 
-function SiteTextManager({ toast }: { toast: (m: string, t?: "ok" | "err") => void }) {
+function SiteTextManager({ toast, lang }: { toast: (m: string, t?: "ok" | "err") => void; lang: EditLang }) {
   const [rows, setRows] = useState<SiteTextRow[]>([]);
   const [draft, setDraft] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
-  useEffect(() => { api<SiteTextRow[]>("/content/text").then(r => { setRows(r); setDraft(Object.fromEntries(r.map(x => [x.key, x.value]))); setLoading(false); }).catch(() => setLoading(false)); }, []);
+  const enOf = (k: string) => rows.find(r => r.key === k)?.value ?? "";
+
+  useEffect(() => { api<SiteTextRow[]>("/content/text").then(r => { setRows(r); setLoading(false); }).catch(() => setLoading(false)); }, []);
+  // (Re)derive the editable draft whenever the data or the edit-language changes.
+  useEffect(() => { setDraft(Object.fromEntries(rows.map(x => [x.key, (lang === "pt" ? (x.valuePt ?? "") : x.value)]))); }, [rows, lang]);
+
   const save = async () => {
-    try { const r = await api<{ updated: number }>("/content/text", { method: "PATCH", body: JSON.stringify(draft) }); toast(`Saved ${r.updated} field(s)`); }
-    catch (e: any) { toast(e.message, "err"); }
+    try {
+      const r = await api<{ updated: number }>("/content/text", { method: "PATCH", body: JSON.stringify({ lang, values: draft }) });
+      // reflect locally so switching language keeps what we just saved
+      setRows(prev => prev.map(x => x.key in draft ? { ...x, ...(lang === "pt" ? { valuePt: draft[x.key] } : { value: draft[x.key] }) } : x));
+      toast(`Saved ${r.updated} field(s) · ${lang.toUpperCase()}`);
+    } catch (e: any) { toast(e.message, "err"); }
   };
   if (loading) return <div style={T.empty}>Loading…</div>;
   const label = (k: string) => k.split(".").slice(1).join(".").replace(/([A-Z])/g, " $1");
@@ -2408,34 +2472,42 @@ function SiteTextManager({ toast }: { toast: (m: string, t?: "ok" | "err") => vo
           <div style={{ fontSize: 13, fontWeight: 700, color: C.faint, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>{g.label}</div>
           <div style={T.card}>
             {g.keys.map(k => {
-              const long = (draft[k] ?? "").length > 60;
+              const long = ((lang === "pt" ? enOf(k) : draft[k]) ?? "").length > 60;
               return (
                 <div key={k} style={{ marginBottom: 14 }}>
                   <label style={T.label}>{label(k)} <span style={{ color: C.muted, fontWeight: 400 }}>· {k}</span></label>
                   {long
-                    ? <textarea style={{ ...T.input, minHeight: 56, fontFamily: "inherit", resize: "vertical" as const }} value={draft[k] ?? ""} onChange={e => setDraft({ ...draft, [k]: e.target.value })} />
-                    : <input style={T.input} value={draft[k] ?? ""} onChange={e => setDraft({ ...draft, [k]: e.target.value })} />}
+                    ? <textarea style={{ ...T.input, minHeight: 56, fontFamily: "inherit", resize: "vertical" as const }} value={draft[k] ?? ""} placeholder={lang === "pt" ? enOf(k) : ""} onChange={e => setDraft({ ...draft, [k]: e.target.value })} />
+                    : <input style={T.input} value={draft[k] ?? ""} placeholder={lang === "pt" ? enOf(k) : ""} onChange={e => setDraft({ ...draft, [k]: e.target.value })} />}
                 </div>
               );
             })}
           </div>
         </div>
       ))}
-      <Btn label="Save all text" onClick={save} />
+      <Btn label={`Save all text · ${lang.toUpperCase()}`} onClick={save} />
     </>
   );
 }
 
 function Content({ toast }: { toast: (m: string, t?: "ok" | "err") => void }) {
   const [tab, setTab] = useState<"cards" | "text">("cards");
+  const [lang, setLang] = useState<EditLang>("en");
+  const langBtn = (l: EditLang, label: string) => (
+    <button onClick={() => setLang(l)} style={{ padding: "6px 12px", borderRadius: 6, border: `1px solid ${lang === l ? C.accentDark : C.border}`, background: lang === l ? C.accentDark : "transparent", color: lang === l ? C.text : C.muted, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>{label}</button>
+  );
   return (
     <>
       <div style={T.title}>Content <span style={{ fontSize: 14, fontWeight: 400, color: C.muted }}>· marketing site</span></div>
-      <div style={{ display: "flex", gap: 8, marginBottom: 22 }}>
+      <div style={{ display: "flex", gap: 8, marginBottom: 22, alignItems: "center" }}>
         <Btn label="Cards" variant={tab === "cards" ? "primary" : "ghost"} onClick={() => setTab("cards")} />
         <Btn label="Site Text" variant={tab === "text" ? "primary" : "ghost"} onClick={() => setTab("text")} />
+        <div style={{ marginLeft: "auto", display: "flex", gap: 6, alignItems: "center" }}>
+          <span style={{ fontSize: 11, color: C.muted, marginRight: 2 }}>Editing:</span>
+          {langBtn("en", "EN")}{langBtn("pt", "PT")}
+        </div>
       </div>
-      {tab === "cards" ? <CardsManager toast={toast} /> : <SiteTextManager toast={toast} />}
+      {tab === "cards" ? <CardsManager toast={toast} lang={lang} /> : <SiteTextManager toast={toast} lang={lang} />}
     </>
   );
 }
