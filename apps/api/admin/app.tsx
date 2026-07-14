@@ -2201,21 +2201,40 @@ function Leads({ toast }: { toast: (m: string, t?: "ok" | "err") => void }) {
 }
 
 // ─── Content manager: marketing cards + site text ────────
-type ContentCard = { id: string; section: string; slug: string; n: string; category: string | null; name: string; body: string; tags: string; accent: string | null; href: string | null; sortOrder: number; visible: boolean };
+type ContentCard = { id: string; section: string; slug: string; n: string; category: string | null; name: string; body: string; tags: string; accent: string | null; href: string | null; detail: string; image: string | null; gallery: string; year: string | null; role: string | null; sortOrder: number; visible: boolean };
 type SiteTextRow = { key: string; value: string; updatedAt: string };
 
 function parseTags(raw: string): string[] { try { const v = JSON.parse(raw); return Array.isArray(v) ? v.map(String) : []; } catch { return []; } }
 
-type CardDraft = { id: string | null; section: string; slug: string; n: string; category: string; name: string; body: string; tags: string; accent: string; href: string; visible: boolean };
+type CardDraft = { id: string | null; section: string; slug: string; n: string; category: string; name: string; body: string; tags: string; accent: string; href: string; visible: boolean; detail: string; image: string; gallery: string[]; year: string; role: string };
 
-function CardEditor({ draft, setDraft, onSave, onCancel }: { draft: CardDraft; setDraft: (d: CardDraft) => void; onSave: () => void; onCancel: () => void }) {
+async function uploadImage(file: File): Promise<string> {
+  const fd = new FormData();
+  fd.append("file", file);
+  const res = await fetch("/admin/api/content/upload", { method: "POST", credentials: "include", body: fd });
+  if (!res.ok) throw new Error((await res.text()) || "Upload failed");
+  return (await res.json()).path as string;
+}
+
+function CardEditor({ draft, setDraft, onSave, onCancel, toast }: { draft: CardDraft; setDraft: (d: CardDraft) => void; onSave: () => void; onCancel: () => void; toast: (m: string, t?: "ok" | "err") => void }) {
+  const [busy, setBusy] = useState(false);
   const set = (k: keyof CardDraft, v: any) => setDraft({ ...draft, [k]: v });
   const field = (label: string, k: keyof CardDraft, ph = "") => (
     <div><label style={T.label}>{label}</label><input style={T.input} value={draft[k] as string} placeholder={ph} onChange={e => set(k, e.target.value)} /></div>
   );
+  const pickHero = async (f: File | null) => {
+    if (!f) return; setBusy(true);
+    try { set("image", await uploadImage(f)); toast("Image uploaded"); } catch (e: any) { toast(e.message, "err"); } finally { setBusy(false); }
+  };
+  const pickGallery = async (files: FileList | null) => {
+    if (!files?.length) return; setBusy(true);
+    try { const paths: string[] = []; for (const f of Array.from(files)) paths.push(await uploadImage(f)); setDraft({ ...draft, gallery: [...draft.gallery, ...paths] }); toast(`${paths.length} image(s) uploaded`); }
+    catch (e: any) { toast(e.message, "err"); } finally { setBusy(false); }
+  };
+  const isWork = draft.section === "work";
   return (
     <div style={{ ...T.card, border: `1px solid ${C.accentDark}` }}>
-      <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 16 }}>{draft.id ? "Edit card" : "New card"}</div>
+      <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 16 }}>{draft.id ? "Edit card" : "New card"}{busy && <span style={{ color: C.muted, fontWeight: 400, fontSize: 12 }}> · uploading…</span>}</div>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
         <div><label style={T.label}>Section</label>
           <select style={T.input} value={draft.section} onChange={e => set("section", e.target.value)}>
@@ -2226,21 +2245,61 @@ function CardEditor({ draft, setDraft, onSave, onCancel }: { draft: CardDraft; s
         {field("Number (e.g. 01)", "n", "01")}
         {field("Name", "name", "Turnkey Live Production")}
         {field("Category / eyebrow", "category", "Events")}
-        {field("Anchor slug", "slug", "work-01")}
+        {field("Anchor slug (URL: /work/<slug>)", "slug", "work-01")}
         {field("Accent color (#hex)", "accent", "#A15E1E")}
       </div>
-      <div style={{ marginTop: 14 }}><label style={T.label}>Body</label>
-        <textarea style={{ ...T.input, minHeight: 70, fontFamily: "inherit", resize: "vertical" as const }} value={draft.body} onChange={e => set("body", e.target.value)} />
+      <div style={{ marginTop: 14 }}><label style={T.label}>Teaser (shown on the card)</label>
+        <textarea style={{ ...T.input, minHeight: 60, fontFamily: "inherit", resize: "vertical" as const }} value={draft.body} onChange={e => set("body", e.target.value)} />
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginTop: 14 }}>
         {field("Tags (comma-separated)", "tags", "FOH, Staging, Lighting")}
-        {field("Link (optional)", "href", "https://…")}
+        {field("External link (optional)", "href", "https://…")}
       </div>
-      <label style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 14, fontSize: 13, color: C.faint, cursor: "pointer" }}>
+
+      {isWork && (
+        <div style={{ marginTop: 20, paddingTop: 16, borderTop: `1px solid ${C.border}` }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: C.faint, textTransform: "uppercase", letterSpacing: 1, marginBottom: 12 }}>Detail page <span style={{ color: C.muted, fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>· /work/{draft.slug || "…"}</span></div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
+            {field("Year / period", "year", "2025")}
+            {field("Role / scope", "role", "FOH · Production")}
+          </div>
+          <div style={{ marginBottom: 14 }}><label style={T.label}>Full description (blank line = new paragraph)</label>
+            <textarea style={{ ...T.input, minHeight: 120, fontFamily: "inherit", resize: "vertical" as const }} value={draft.detail} onChange={e => set("detail", e.target.value)} />
+          </div>
+          {/* Hero image */}
+          <label style={T.label}>Hero image</label>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
+            {draft.image
+              ? <img src={draft.image} alt="" style={{ width: 120, height: 68, objectFit: "cover", borderRadius: 6, border: `1px solid ${C.border}` }} />
+              : <div style={{ width: 120, height: 68, borderRadius: 6, border: `1px dashed ${C.border}`, display: "flex", alignItems: "center", justifyContent: "center", color: C.muted, fontSize: 11 }}>no image</div>}
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              <label style={{ ...T.input, width: "auto", cursor: "pointer", padding: "7px 12px", display: "inline-block" }}>
+                Upload…<input type="file" accept="image/*" style={{ display: "none" }} onChange={e => pickHero(e.target.files?.[0] ?? null)} />
+              </label>
+              {draft.image && <span onClick={() => set("image", "")} style={{ fontSize: 12, color: C.danger, cursor: "pointer" }}>Remove</span>}
+            </div>
+          </div>
+          {/* Gallery */}
+          <label style={T.label}>Gallery</label>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 10 }}>
+            {draft.gallery.map((g, i) => (
+              <div key={i} style={{ position: "relative" }}>
+                <img src={g} alt="" style={{ width: 84, height: 56, objectFit: "cover", borderRadius: 5, border: `1px solid ${C.border}` }} />
+                <span onClick={() => setDraft({ ...draft, gallery: draft.gallery.filter((_, j) => j !== i) })} style={{ position: "absolute", top: -6, right: -6, background: "#7f1d1d", color: "#fff", borderRadius: 20, width: 18, height: 18, fontSize: 12, lineHeight: "18px", textAlign: "center", cursor: "pointer" }}>×</span>
+              </div>
+            ))}
+          </div>
+          <label style={{ ...T.input, width: "auto", cursor: "pointer", padding: "7px 12px", display: "inline-block" }}>
+            + Add images<input type="file" accept="image/*" multiple style={{ display: "none" }} onChange={e => pickGallery(e.target.files)} />
+          </label>
+        </div>
+      )}
+
+      <label style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 16, fontSize: 13, color: C.faint, cursor: "pointer" }}>
         <input type="checkbox" checked={draft.visible} onChange={e => set("visible", e.target.checked)} /> Visible on site
       </label>
       <div style={{ display: "flex", gap: 8, marginTop: 18 }}>
-        <Btn label={draft.id ? "Save changes" : "Create card"} onClick={onSave} />
+        <Btn label={draft.id ? "Save changes" : "Create card"} onClick={onSave} disabled={busy} />
         <Btn label="Cancel" variant="ghost" onClick={onCancel} />
       </div>
     </div>
@@ -2255,12 +2314,12 @@ function CardsManager({ toast }: { toast: (m: string, t?: "ok" | "err") => void 
   const load = () => api<ContentCard[]>("/content/cards").then(cs => { setCards(cs); setLoading(false); }).catch(() => setLoading(false));
   useEffect(() => { load(); }, []);
 
-  const startEdit = (c: ContentCard) => setDraft({ id: c.id, section: c.section, slug: c.slug, n: c.n, category: c.category ?? "", name: c.name, body: c.body, tags: parseTags(c.tags).join(", "), accent: c.accent ?? "", href: c.href ?? "", visible: c.visible });
-  const startNew = (section: string) => setDraft({ id: null, section, slug: "", n: "", category: "", name: "", body: "", tags: "", accent: "", href: "", visible: true });
+  const startEdit = (c: ContentCard) => setDraft({ id: c.id, section: c.section, slug: c.slug, n: c.n, category: c.category ?? "", name: c.name, body: c.body, tags: parseTags(c.tags).join(", "), accent: c.accent ?? "", href: c.href ?? "", visible: c.visible, detail: c.detail ?? "", image: c.image ?? "", gallery: parseTags(c.gallery ?? "[]"), year: c.year ?? "", role: c.role ?? "" });
+  const startNew = (section: string) => setDraft({ id: null, section, slug: "", n: "", category: "", name: "", body: "", tags: "", accent: "", href: "", visible: true, detail: "", image: "", gallery: [], year: "", role: "" });
 
   const save = async () => {
     if (!draft) return;
-    const payload = { section: draft.section, slug: draft.slug, n: draft.n, category: draft.category, name: draft.name, body: draft.body, accent: draft.accent, href: draft.href, visible: draft.visible, tags: draft.tags.split(",").map(s => s.trim()).filter(Boolean) };
+    const payload = { section: draft.section, slug: draft.slug, n: draft.n, category: draft.category, name: draft.name, body: draft.body, accent: draft.accent, href: draft.href, visible: draft.visible, tags: draft.tags.split(",").map(s => s.trim()).filter(Boolean), detail: draft.detail, image: draft.image, year: draft.year, role: draft.role, gallery: draft.gallery };
     try {
       if (draft.id) await api(`/content/cards/${draft.id}`, { method: "PATCH", body: JSON.stringify(payload) });
       else await api(`/content/cards`, { method: "POST", body: JSON.stringify(payload) });
@@ -2313,7 +2372,7 @@ function CardsManager({ toast }: { toast: (m: string, t?: "ok" | "err") => void 
 
   return (
     <>
-      {draft && <CardEditor draft={draft} setDraft={setDraft} onSave={save} onCancel={() => setDraft(null)} />}
+      {draft && <CardEditor draft={draft} setDraft={setDraft} onSave={save} onCancel={() => setDraft(null)} toast={toast} />}
       {loading ? <div style={T.empty}>Loading…</div> : (<>
         {sectionTable("work", "Work")}
         {sectionTable("services", "Services")}

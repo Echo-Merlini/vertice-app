@@ -109,8 +109,23 @@ adminRoutes.delete("/api/leads/:id", requireAdmin, async (c) => {
   return c.json({ ok: true });
 });
 
+// ─── API: Site Content — image upload (local disk, served at /uploads) ──
+adminRoutes.post("/api/content/upload", requireAdmin, async (c) => {
+  const form = await c.req.formData();
+  const file = form.get("file") as File | null;
+  if (!file) return c.json({ error: "No file provided" }, 400);
+  if (file.size > 8 * 1024 * 1024) return c.json({ error: "File too large (max 8 MB)" }, 400);
+  const okTypes = ["image/jpeg", "image/png", "image/webp", "image/gif", "image/avif", "image/svg+xml"];
+  if (!okTypes.includes(file.type)) return c.json({ error: "Only image files are allowed" }, 400);
+  const ext = (file.name.split(".").pop() || "bin").toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 5);
+  const name = `${nanoid()}.${ext}`;
+  await Bun.write(`./public/uploads/${name}`, await file.arrayBuffer());
+  audit(c, "content.image.uploaded", "content_upload", name);
+  return c.json({ ok: true, path: `/uploads/${name}` });
+});
+
 // ─── API: Site Content — cards ───────────────────────────
-const CARD_FIELDS = ["section", "slug", "n", "category", "name", "body", "accent", "href"] as const;
+const CARD_FIELDS = ["section", "slug", "n", "category", "name", "body", "accent", "href", "detail", "image", "year", "role"] as const;
 
 adminRoutes.get("/api/content/cards", requireAdmin, async (c) => {
   const rows = await db.select().from(contentCard).orderBy(asc(contentCard.section), asc(contentCard.sortOrder));
@@ -133,6 +148,11 @@ adminRoutes.post("/api/content/cards", requireAdmin, async (c) => {
     tags: JSON.stringify(Array.isArray(b.tags) ? b.tags.map(String) : []),
     accent: b.accent ? String(b.accent) : null,
     href: b.href ? String(b.href) : null,
+    detail: String(b.detail ?? ""),
+    image: b.image ? String(b.image) : null,
+    gallery: JSON.stringify(Array.isArray(b.gallery) ? b.gallery.map(String) : []),
+    year: b.year ? String(b.year) : null,
+    role: b.role ? String(b.role) : null,
     sortOrder: Number(max) || 0,
     visible: b.visible === false ? false : true,
   });
@@ -144,8 +164,10 @@ adminRoutes.patch("/api/content/cards/:id", requireAdmin, async (c) => {
   const id = c.req.param("id");
   const b = await c.req.json<Record<string, unknown>>();
   const patch: Record<string, unknown> = { updatedAt: new Date() };
-  for (const f of CARD_FIELDS) if (f in b) patch[f] = b[f] === "" ? (f === "name" || f === "slug" ? b[f] : null) : b[f];
+  const keepEmpty = new Set(["name", "slug", "body", "detail"]);
+  for (const f of CARD_FIELDS) if (f in b) patch[f] = b[f] === "" ? (keepEmpty.has(f) ? b[f] : null) : b[f];
   if ("tags" in b) patch.tags = JSON.stringify(Array.isArray(b.tags) ? b.tags.map(String) : []);
+  if ("gallery" in b) patch.gallery = JSON.stringify(Array.isArray(b.gallery) ? b.gallery.map(String) : []);
   if ("visible" in b) patch.visible = !!b.visible;
   if ("sortOrder" in b) patch.sortOrder = Number(b.sortOrder) || 0;
   await db.update(contentCard).set(patch).where(eq(contentCard.id, id));

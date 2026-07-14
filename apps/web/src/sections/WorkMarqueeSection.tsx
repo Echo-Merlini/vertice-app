@@ -1,22 +1,33 @@
 import { useEffect, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 import { ArrowUpRight } from "lucide-react";
 import { VerticeMark } from "../components/VerticeMark";
-import { useContent, Card } from "../content/ContentContext";
+import { useContent, imageUrl, Card } from "../content/ContentContext";
 
 function Tile({ p }: { p: Card }) {
+  const img = imageUrl(p.image);
   return (
-    <a
-      href={`#${p.slug}`}
+    <Link
+      to={`/work/${p.slug}`}
       className="group relative shrink-0 overflow-hidden rounded-2xl border border-white/8 transition-colors duration-300 hover:border-brassLight/50"
       style={{ width: 360, height: 230, background: "#191B21" }}
     >
-      <div
-        className="absolute inset-0 opacity-60"
-        style={{ background: `radial-gradient(circle at 70% 25%, ${p.accent ?? "#A15E1E"}33 0%, transparent 60%)` }}
-      />
-      <div className="absolute inset-0 flex items-center justify-center opacity-90">
-        <VerticeMark size={120} />
-      </div>
+      {img ? (
+        <>
+          <img src={img} alt={p.name} className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
+          <div className="absolute inset-0" style={{ background: "linear-gradient(to top, rgba(12,13,17,0.9) 0%, transparent 55%)" }} />
+        </>
+      ) : (
+        <>
+          <div
+            className="absolute inset-0 opacity-60"
+            style={{ background: `radial-gradient(circle at 70% 25%, ${p.accent ?? "#A15E1E"}33 0%, transparent 60%)` }}
+          />
+          <div className="absolute inset-0 flex items-center justify-center opacity-90">
+            <VerticeMark size={120} />
+          </div>
+        </>
+      )}
       <div className="absolute inset-x-0 bottom-0 flex items-end justify-between p-4">
         <div>
           <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-brassLight/80">{p.category}</p>
@@ -26,7 +37,7 @@ function Tile({ p }: { p: Card }) {
           <ArrowUpRight className="h-4 w-4" />
         </span>
       </div>
-    </a>
+    </Link>
   );
 }
 

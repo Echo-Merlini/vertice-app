@@ -1,7 +1,9 @@
 import { useRef } from "react";
+import { Link } from "react-router-dom";
+import { ArrowUpRight } from "lucide-react";
 import { motion, MotionValue, useScroll, useTransform } from "framer-motion";
 import { VerticeMark } from "../components/VerticeMark";
-import { useContent, Card } from "../content/ContentContext";
+import { useContent, imageUrl, Card } from "../content/ContentContext";
 
 const radius = "rounded-[32px] sm:rounded-[40px]";
 
@@ -20,6 +22,7 @@ function ProjectCard({
 }) {
   const scale = useTransform(progress, range, [1, targetScale]);
   const accent = project.accent ?? "#A15E1E";
+  const img = imageUrl(project.image);
 
   return (
     <div id={project.slug} className="h-[86vh] flex items-center justify-center sticky top-24 md:top-28 scroll-mt-24">
@@ -48,6 +51,14 @@ function ProjectCard({
               {project.name}
             </h3>
             <p className="mt-4 text-slate leading-relaxed max-w-md">{project.body}</p>
+            <div className="mt-5">
+              <Link
+                to={`/work/${project.slug}`}
+                className="inline-flex items-center gap-1.5 font-display font-medium text-brassLight hover:text-brass transition-colors"
+              >
+                View project <ArrowUpRight className="h-4 w-4" />
+              </Link>
+            </div>
             <div className="mt-auto pt-6 flex flex-wrap gap-2">
               {project.tags.map((t) => (
                 <span
@@ -60,22 +71,29 @@ function ProjectCard({
             </div>
           </div>
 
-          {/* Asset-free visual panel */}
-          <div
-            className={`relative overflow-hidden min-h-[220px] md:min-h-0 border border-white/8 ${radius}`}
+          {/* Visual panel — uploaded image or asset-free mark */}
+          <Link
+            to={`/work/${project.slug}`}
+            className={`group relative overflow-hidden min-h-[220px] md:min-h-0 border border-white/8 ${radius}`}
             style={{ background: "#191B21" }}
           >
-            <div
-              className="absolute inset-0 opacity-60"
-              style={{ background: `radial-gradient(circle at 70% 30%, ${accent}33 0%, transparent 60%)` }}
-            />
-            <div className="absolute inset-0 flex items-center justify-center opacity-90">
-              <VerticeMark size={150} />
-            </div>
+            {img ? (
+              <img src={img} alt={project.name} className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
+            ) : (
+              <>
+                <div
+                  className="absolute inset-0 opacity-60"
+                  style={{ background: `radial-gradient(circle at 70% 30%, ${accent}33 0%, transparent 60%)` }}
+                />
+                <div className="absolute inset-0 flex items-center justify-center opacity-90">
+                  <VerticeMark size={150} />
+                </div>
+              </>
+            )}
             <span className="absolute bottom-4 left-5 font-mono text-[10px] uppercase tracking-[0.2em] text-slate/50">
               Vértice · {project.category}
             </span>
-          </div>
+          </Link>
         </div>
       </motion.div>
     </div>

@@ -22,6 +22,7 @@ contentRoutes.get("/", async (c) => {
     tags: safeTags(r.tags),
     accent: r.accent ?? undefined,
     href: r.href ?? undefined,
+    image: r.image ?? undefined,
   });
 
   const text: Record<string, string> = {};
@@ -33,6 +34,29 @@ contentRoutes.get("/", async (c) => {
       services: cards.filter(r => r.section === "services").map(shape),
     },
     text,
+  });
+});
+
+// Public: full detail record for a single work card's dedicated page.
+contentRoutes.get("/work/:slug", async (c) => {
+  const slug = c.req.param("slug");
+  const [r] = await db.select().from(contentCard).where(eq(contentCard.slug, slug)).limit(1);
+  if (!r || !r.visible) return c.json({ error: "Not found" }, 404);
+  return c.json({
+    slug: r.slug,
+    section: r.section,
+    n: r.n,
+    category: r.category ?? undefined,
+    name: r.name,
+    body: r.body,
+    detail: r.detail,
+    tags: safeTags(r.tags),
+    accent: r.accent ?? undefined,
+    href: r.href ?? undefined,
+    image: r.image ?? undefined,
+    gallery: safeTags(r.gallery),
+    year: r.year ?? undefined,
+    role: r.role ?? undefined,
   });
 });
 

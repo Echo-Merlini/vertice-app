@@ -1,7 +1,14 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { DEFAULT_CONTENT, SiteContent, Card } from "./defaults";
 
-const API = import.meta.env.VITE_API_URL || "http://localhost:3000";
+export const API = import.meta.env.VITE_API_URL || "http://localhost:3000";
+
+/** Resolve an image path (/uploads/…) to an absolute URL on the API origin. */
+export function imageUrl(path?: string): string | undefined {
+  if (!path) return undefined;
+  if (/^https?:\/\//.test(path)) return path;
+  return `${API}${path.startsWith("/") ? "" : "/"}${path}`;
+}
 
 const ContentContext = createContext<SiteContent>(DEFAULT_CONTENT);
 

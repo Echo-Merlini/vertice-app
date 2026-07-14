@@ -8,6 +8,16 @@ export type Card = {
   tags: string[];
   accent?: string;         // glow / tint color (#hex)
   href?: string;
+  image?: string;          // thumbnail / hero image path (/uploads/…)
+};
+
+// Full detail record for a work card's dedicated page (GET /content/work/:slug).
+export type CardDetail = Card & {
+  section: string;
+  detail: string;          // long description (blank-line separated paragraphs)
+  gallery: string[];       // image paths
+  year?: string;
+  role?: string;
 };
 
 export type SiteContent = {

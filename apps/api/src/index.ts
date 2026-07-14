@@ -64,6 +64,15 @@ app.get("/health", (c) => c.json({ status: "ok", ts: Date.now() }));
 app.get("/sw.js",        (c) => new Response(Bun.file("./public/sw.js"),        { headers: { "Content-Type": "application/javascript", "Service-Worker-Allowed": "/" } }));
 app.get("/manifest.json",(c) => new Response(Bun.file("./public/manifest.json"),{ headers: { "Content-Type": "application/manifest+json" } }));
 
+// ─── Uploaded content images (local disk, persisted via a mounted volume) ──
+app.get("/uploads/:file", async (c) => {
+  const name = c.req.param("file").replace(/[^a-zA-Z0-9._-]/g, "");
+  if (!name || name.includes("..")) return c.notFound();
+  const file = Bun.file(`./public/uploads/${name}`);
+  if (!(await file.exists())) return c.notFound();
+  return new Response(file, { headers: { "Cache-Control": "public, max-age=31536000, immutable" } });
+});
+
 // ─── Routes ─────────────────────────────────────────────
 app.route("/", routes);
 

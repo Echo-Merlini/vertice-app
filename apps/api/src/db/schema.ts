@@ -320,10 +320,16 @@ export const contentCard = pgTable("content_card", {
   n: text("n").notNull().default(""),                  // display index "01"
   category: text("category"),                          // eyebrow label (work cards)
   name: text("name").notNull(),                        // card title
-  body: text("body").notNull().default(""),            // outcome / description
+  body: text("body").notNull().default(""),            // outcome / description (card teaser)
   tags: text("tags").notNull().default("[]"),          // JSON string[]
   accent: text("accent"),                              // glow / tint color (#hex)
   href: text("href"),                                  // optional external link
+  // ── detail-page fields (work cards) ──
+  detail: text("detail").notNull().default(""),        // long description (paragraphs)
+  image: text("image"),                                // hero image path (/uploads/…)
+  gallery: text("gallery").notNull().default("[]"),    // JSON string[] of image paths
+  year: text("year"),                                  // meta: year / period
+  role: text("role"),                                  // meta: role / scope
   sortOrder: integer("sort_order").notNull().default(0),
   visible: boolean("visible").notNull().default(true),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
