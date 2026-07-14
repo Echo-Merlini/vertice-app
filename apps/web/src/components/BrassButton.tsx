@@ -6,17 +6,19 @@ type BrassButtonProps = {
   href?: string;
   variant?: "solid" | "ghost";
   className?: string;
+  external?: boolean;
 };
 
 /**
  * The single brass CTA — pill with a trailing circular arrow. Restraint: one per
  * view. `solid` = brass fill; `ghost` = hairline outline for secondary actions.
  */
-export function BrassButton({ children, href = "#contact", variant = "solid", className = "" }: BrassButtonProps) {
+export function BrassButton({ children, href = "#contact", variant = "solid", className = "", external = false }: BrassButtonProps) {
   const solid = variant === "solid";
   return (
     <a
       href={href}
+      {...(external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
       className={`group inline-flex items-center gap-3 rounded-full pl-6 pr-2 py-2 text-sm font-medium tracking-tight transition-colors duration-200 ${
         solid
           ? "bg-brass text-paper hover:bg-brassLight hover:text-deepink"
